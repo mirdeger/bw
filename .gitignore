@@ -130,3 +130,6 @@ dmypy.json
 
 # Log files for successful attacks etc.
 *.txt
+
+# 
+run.flag
