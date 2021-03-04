@@ -209,35 +209,35 @@ class Graph:
         return res
 
     # TODO move to a test module
-    def graph_test():
-        g1 = Graph()
-        assert g1.add(1)        == True
-        assert g1.add(2)        == True
-        assert g1.add(2)        == False # Same node twice
-        assert g1.connect(1, 2, "val") == True
-        assert g1.connect(1, 3, "val") == False # Non existing node
-        assert g1.connect(1, 2, "val") == False # Same edge twice
-        assert len(g1.nodes)==2 and len(g1.edges) == 1 == True
-        #print(g1)
-
-
-        g2 = Graph()
-        p1 = Request("https://example.com/1.html", "get")
-        p2 = Request("https://example.com/2.html", "get")
-        assert g2.add(p1) == True
-        assert g2.add(p2) == True
-        assert g2.connect(p1,p2, "val") == True
-        p3 = Request("https://example.com/3.html", "get")
-        assert g2.add(p3) == True
-        g2.connect(p1,p3, "val") == False
-        g2.connect(p2,p3, "val") == False
-        #print(g2)
-
-        g3 = Graph()
-        g3.add(1)
-        assert g3.nodes[0].visited == False
-        g3.visit_node(1)
-        assert g3.nodes[0].visited == True
+    # def graph_test():
+    #     g1 = Graph()
+    #     assert g1.add(1)        == True
+    #     assert g1.add(2)        == True
+    #     assert g1.add(2)        == False # Same node twice
+    #     assert g1.connect(1, 2, "val") == True
+    #     assert g1.connect(1, 3, "val") == False # Non existing node
+    #     assert g1.connect(1, 2, "val") == False # Same edge twice
+    #     assert len(g1.nodes)==2 and len(g1.edges) == 1 == True
+    #     #print(g1)
+    #
+    # 
+    #     g2 = Graph()
+    #     p1 = Request("https://example.com/1.html", "get")
+    #     p2 = Request("https://example.com/2.html", "get")
+    #     assert g2.add(p1) == True
+    #     assert g2.add(p2) == True
+    #     assert g2.connect(p1,p2, "val") == True
+    #     p3 = Request("https://example.com/3.html", "get")
+    #     assert g2.add(p3) == True
+    #     g2.connect(p1,p3, "val") == False
+    #     g2.connect(p2,p3, "val") == False
+    #     #print(g2)
+    #
+    #     g3 = Graph()
+    #     g3.add(1)
+    #     assert g3.nodes[0].visited == False
+    #     g3.visit_node(1)
+    #     assert g3.nodes[0].visited == True
 
 
 class Form:
