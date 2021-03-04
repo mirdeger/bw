@@ -581,7 +581,7 @@ class Crawler:
                             n_events += 1
                 print()
                 print("----------------------")
-                print("GETS    | FROMS  | EVENTS ")
+                print("GETS    | FORMS  | EVENTS ")
                 print(str(n_gets).ljust(7), "|", str(n_forms).ljust(6), "|", n_events)
                 print("----------------------")
 
