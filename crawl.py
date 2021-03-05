@@ -27,7 +27,7 @@ chrome_options.add_argument("--disable-web-security")
 chrome_options.add_argument("--disable-xss-auditor")
 
 # launch Chrome
-driver = webdriver.Chrome(chrome_options = chrome_options)
+driver = webdriver.Chrome(options = chrome_options) # driver = webdriver.Chrome(chrome_options = chrome_options)
 
 
 
