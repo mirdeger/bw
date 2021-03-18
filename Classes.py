@@ -618,16 +618,12 @@ class Crawler:
 
         print("Extracting URLs")
 
-        file = open("urls.json", "w")
-        file.write("{}")
-        file.close()
+        # file = open("urls.json", "w")
+        # file.write("{}")
+        # file.close()
 
         self.check_parameters()
-        self.check_forms(file)
-
-        # file = open('urls.json', 'r')
-        # lines = file.readlines()
-        # for line in lines:
+        self.check_forms()
 
         print("DONE!")
 
@@ -649,22 +645,18 @@ class Crawler:
                             if "=" in parameter:
                                 # Only split on first to allow ?a=b=C => (a, b=c)
                                 (key, value) = parameter.split("=", 1)
-                                with open("urls.json") as json_file:
-                                    json_decoded = json.load(json_file)
-                                json_decoded[node.value.url] = {'parameter': key, 'cookies': ",".join(cookies)}
-                                with open("urls.json", 'w') as json_file:
-                                    json.dump(json_decoded, json_file)
+                                json = {node.value.url: {'parameter': key,
+                                                         'cookies': ",".join(cookies)}}
+                                print(json)
 
                             # Singleton parameters ?x&y&z
                             else:
-                                with open("urls.json") as json_file:
-                                    json_decoded = json.load(json_file)
-                                json_decoded[node.value.url] = {'parameter': parameter, 'cookies': ",".join(cookies)}
-                                with open("urls.json", 'w') as json_file:
-                                    json.dump(json_decoded, json_file)
+                                json = {node.value.url: {'parameter': parameter,
+                                                         'cookies': ",".join(cookies)}}
+                                print(json)
 
 
-    def check_forms(self, file):
+    def check_forms(self):
         for edge in self.graph.edges:
             edge_cookies = edge.value.cookies
             cookies = []
@@ -683,13 +675,11 @@ class Crawler:
                             data.append(form_input.name + "=" + form_input.value)
                             parameters.append(form_input.name)
                     if parameters:
-                        with open("urls.json") as json_file:
-                            json_decoded = json.load(json_file)
-                        json_decoded[form.action] = {'parameter': ",".join(parameters),
-                                                     'data': ",".join(data),
-                                                     'cookies': ",".join(cookies)}
-                        with open("urls.json", 'w') as json_file:
-                            json.dump(json_decoded, json_file)
+                        json = {form.action: {'parameter': ",".join(parameters),
+                                              'data': ",".join(data),
+                                              'cookies': ",".join(cookies),
+                                              'method': "POST"}}
+                        print(json)
 
                 if form.method == "get":
                     parameters = []
@@ -700,15 +690,11 @@ class Crawler:
                             parameters.append(form_input.name)
 
                     if parameters:
-                        with open("urls.json") as json_file:
-                            json_decoded = json.load(json_file)
-                        with open("urls.json") as json_file:
-                            json_decoded = json.load(json_file)
-                        json_decoded[form.action] = {'parameter': ",".join(parameters),
-                                                     'data': ",".join(data),
-                                                     'cookies': ",".join(cookies)}
-                        with open("urls.json", 'w') as json_file:
-                            json.dump(json_decoded, json_file)
+                        json = {form.action: {'parameter': ",".join(parameters),
+                                              'data': ",".join(data),
+                                              'cookies': ",".join(cookies),
+                                              'method': "GET"}}
+                        print(json)
 
     def extract_vectors(self):
         print("Extracting urls")
