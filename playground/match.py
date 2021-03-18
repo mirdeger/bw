@@ -20,18 +20,19 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 crawl_script = dir_path+'/'+sys.argv[1]
 attack_script = dir_path+'/'+sys.argv[2]
 print("Wrapper running")
-
+node_file = open("node_file.txt","a")
 #Kör igång crawler
 print("starting crawler")
 crawler = subprocess.Popen(['python3',str(crawl_script)], stdout=subprocess.PIPE)
 
 for line in iter(crawler.stdout.readline,b''):
-  attack_node(line.decode('utf-8')) #Right now the attacks happen sequentially.
+  node_file.write(line.decode('utf-8')) # must be str
+  attack_node(line.decode('utf-8')) #Right now the attacks happen sequentially
+  #starta attackskript. TODO förbättring: sqlmap är slött. Bra att köra olika threads här!
+node_file.close()
 
-
-#starta attackskript. TODO förbättring: sqlmap är slött. Bra att köra olika threads här!
 
 
   # # TODO:
-  # fix popen
-  # listener or loop, when new json comes in, save to file and run attack_node() (in new thread?)
+    # Check whether we can collect something else than stdout-> PIPE. Would be nice to print only intended data to match.py 
+    #Attacks in separate threads so that the slow sqlmap scripts can be run concurrently.

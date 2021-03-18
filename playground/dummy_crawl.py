@@ -1,4 +1,4 @@
 import time
-print("Crawling...", flush=True)
+print("first node", flush=True)
 time.sleep(5)
-print("second", flush=True)
+print("second node", flush=True)
