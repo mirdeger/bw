@@ -23,6 +23,7 @@ import re
 import time
 import itertools
 import string
+import json
 
 from Functions import *
 from extractors.Events import extract_events
@@ -606,27 +607,40 @@ class Crawler:
                 #print(self.graph.toMathematica())
                 break
 
-        print("Done crawling, ready to attack!")
+        print("Done crawling!")
 
-        input("ENTER TO ATTACK")
-        #self.attack()
-        self.extract_to_sqlmap()
+        # input("ENTER TO ATTACK")
+        # self.attack()
+        self.extract_urls_and_parameters()
 
 
-    def extract_to_sqlmap(self):
-        print("Extracting urls")
-        vectors = []
+    def extract_urls_and_parameters(self):
+
+        print("Extracting URLs")
+
+        file = open("urls.json", "w")
+        file.write("{}")
+        file.close()
+
+        self.check_parameters()
+        self.check_forms(file)
+
+        # file = open('urls.json', 'r')
+        # lines = file.readlines()
+        # for line in lines:
+
+        print("DONE!")
+
+    def check_parameters(self):
+        commands_to_execute = []
         for edge in self.graph.edges:
             for node in [edge.n1, edge.n2]:
                 if node.value.url != "ROOTREQ":
-                    #print(node.value.url)
-
                     edge_cookies = edge.value.cookies
-                    sqlmap_cookies = []
+                    cookies = []
                     if edge_cookies:
                         for cookie in edge_cookies:
-                            sqlmap_cookies.append(cookie['name'] + "=" + cookie['value'])
-
+                            cookies.append(cookie['name'] + "=" + cookie['value'])
                     purl = urlparse(node.value.url)
                     parameters = []
                     for parameter in purl.query.split("&"):
@@ -634,51 +648,67 @@ class Crawler:
                             # Look for ?a=b&c=d
                             if "=" in parameter:
                                 # Only split on first to allow ?a=b=C => (a, b=c)
-                                (key,value) = parameter.split("=", 1)
-                                parameters.append(key)
+                                (key, value) = parameter.split("=", 1)
+                                with open("urls.json") as json_file:
+                                    json_decoded = json.load(json_file)
+                                json_decoded[node.value.url] = {'parameter': key, 'cookies': ",".join(cookies)}
+                                with open("urls.json", 'w') as json_file:
+                                    json.dump(json_decoded, json_file)
+
                             # Singleton parameters ?x&y&z
                             else:
-                                parameters.append(parameter)
+                                with open("urls.json") as json_file:
+                                    json_decoded = json.load(json_file)
+                                json_decoded[node.value.url] = {'parameter': parameter, 'cookies': ",".join(cookies)}
+                                with open("urls.json", 'w') as json_file:
+                                    json.dump(json_decoded, json_file)
 
 
-                    if parameters:
-                        print("sqlmap.py" +
-                              " -u " + '"' + node.value.url + '"' +
-                              " --cookie " + '"' + "&".join(sqlmap_cookies) + '"' +
-                              " -p " + '"' + ",".join(parameters) + '"')
-
-
-
+    def check_forms(self, file):
         for edge in self.graph.edges:
+            edge_cookies = edge.value.cookies
+            cookies = []
+            if edge_cookies:
+                for cookie in edge_cookies:
+                    cookies.append(cookie['name'] + "=" + cookie['value'])
             method = edge.value.method
             method_data = edge.value.method_data
-            edge_cookies = edge.value.cookies
             if method == "form":
                 form = method_data
-
-                sqlmap_cookies = []
-                for cookie in edge_cookies:
-                    sqlmap_cookies.append(cookie['name'] + "=" + cookie['value'])
-
-
-                sqlmap_data = []
-                parameters = []
                 if form.method == "post":
-                    #print(form.inputs)
+                    parameters = []
+                    data = []
                     for form_input in form.inputs.values():
-                        #print(form_input)
                         if form_input.value and form_input.name:
-                            sqlmap_data.append( form_input.name + "=" + form_input.value )
+                            data.append(form_input.name + "=" + form_input.value)
+                            parameters.append(form_input.name)
+                    if parameters:
+                        with open("urls.json") as json_file:
+                            json_decoded = json.load(json_file)
+                        json_decoded[form.action] = {'parameter': ",".join(parameters),
+                                                     'data': ",".join(data),
+                                                     'cookies': ",".join(cookies)}
+                        with open("urls.json", 'w') as json_file:
+                            json.dump(json_decoded, json_file)
+
+                if form.method == "get":
+                    parameters = []
+                    data = []
+                    for form_input in form.inputs.values():
+                        if form_input.value and form_input.name:
+                            data.append(form_input.name + "=" + form_input.value)
                             parameters.append(form_input.name)
 
-                if parameters:
-                    print("sqlmap.py" +
-                          " -u " + '"' + form.action + '"' +
-                          " --cookie " + '"' + "&".join(sqlmap_cookies) + '"' +
-                          " --data " + '"' + "&".join(sqlmap_data) + '"' +
-                          " -p " + '"' + ",".join(parameters) + '"')
-        return vectors
-
+                    if parameters:
+                        with open("urls.json") as json_file:
+                            json_decoded = json.load(json_file)
+                        with open("urls.json") as json_file:
+                            json_decoded = json.load(json_file)
+                        json_decoded[form.action] = {'parameter': ",".join(parameters),
+                                                     'data': ",".join(data),
+                                                     'cookies': ",".join(cookies)}
+                        with open("urls.json", 'w') as json_file:
+                            json.dump(json_decoded, json_file)
 
     def extract_vectors(self):
         print("Extracting urls")
@@ -860,78 +890,78 @@ class Crawler:
                     logging.error("NO FORM FILL IN xss_find_state")
 
 
-    def fix_form(self, form, payload_template, safe_attack):
-        alert_text = "%RAND"
+    # def fix_form(self, form, payload_template, safe_attack):
+    #     alert_text = "%RAND"
+    #
+    #     # Optimization. If aggressive fuzzing doesn't add any new
+    #     # types of elements then skip it
+    #     only_aggressive = ["hidden", "radio", "checkbox", "select", "file"]
+    #     need_aggressive = False
+    #     for parameter in form.inputs:
+    #         if parameter.itype in only_aggressive:
+    #             need_aggressive = True
+    #             break
+    #
+    #     for parameter in form.inputs:
+    #         (lookup_id, payload) = self.arm_payload(payload_template)
+    #         if safe_attack:
+    #             # SAFE.
+    #             logging.debug("Starting SAFE attack")
+    #             # List all injectable input types text, textarea, etc.
+    #             if parameter.itype in ["text", "textarea", "password", "email"]:
+    #                 # Arm the payload
+    #                 form.inputs[parameter].value = payload
+    #                 self.use_payload(lookup_id, (form,parameter,payload))
+    #             else:
+    #                 logging.info("SAFE: Ignore parameter " + str(parameter))
+    #         elif need_aggressive:
+    #             # AGGRESSIVE
+    #             logging.debug("Starting AGGRESSIVE attack")
+    #             # List all injectable input types text, textarea, etc.
+    #             if parameter.itype in ["text", "textarea", "password", "email", "hidden"]:
+    #                 # Arm the payload
+    #                 form.inputs[parameter].value = payload
+    #                 self.use_payload(lookup_id, (form,parameter,payload))
+    #             elif parameter.itype in ["radio", "checkbox", "select"]:
+    #                 form.inputs[parameter].override_value = payload
+    #                 self.use_payload(lookup_id, (form,parameter,payload))
+    #             elif parameter.itype == "file":
+    #                 file_payload_template = "<img src=x onerror=xss(%RAND)>"
+    #                 (lookup_id, payload) = self.arm_payload(file_payload_template)
+    #                 form.inputs[parameter].value = payload
+    #                 self.use_payload(lookup_id, (form,parameter,payload))
+    #             else:
+    #                 logging.info("AGGRESSIVE: Ignore parameter " + str(parameter))
+    #
+    #     return form
 
-        # Optimization. If aggressive fuzzing doesn't add any new
-        # types of elements then skip it
-        only_aggressive = ["hidden", "radio", "checkbox", "select", "file"]
-        need_aggressive = False
-        for parameter in form.inputs:
-            if parameter.itype in only_aggressive:
-                need_aggressive = True
-                break
+    # def get_payloads(self):
+    #     payloads = []
+    #     # %RAND will be replaced, useful for tracking
+    #     alert_text = "%RAND"
+    #     xss_payloads = ["<script>xss("+alert_text+")</script>",
+    #                     "\"'><script>xss("+alert_text+")</script>",
+    #                     '<img src="x" onerror="xss('+alert_text+')">',
+    #                     '<a href="" jaekpot-attribute="'+alert_text+'">jaekpot</a>',
+    #                     'x" jaekpot-attribute="'+alert_text+'" fix=" ',
+    #                     'x" onerror="xss('+alert_text+')"',
+    #                     "</title></option><script>xss("+alert_text+")</script>",
+    #                     ]
+    #
+    #     # xss_payloads = ['<a href="" jaekpot-attribute="'+alert_text+'">jaekpot</a>']
+    #     return xss_payloads
 
-        for parameter in form.inputs:
-            (lookup_id, payload) = self.arm_payload(payload_template)
-            if safe_attack:
-                # SAFE.
-                logging.debug("Starting SAFE attack")
-                # List all injectable input types text, textarea, etc.
-                if parameter.itype in ["text", "textarea", "password", "email"]:
-                    # Arm the payload
-                    form.inputs[parameter].value = payload
-                    self.use_payload(lookup_id, (form,parameter,payload))
-                else:
-                    logging.info("SAFE: Ignore parameter " + str(parameter))
-            elif need_aggressive:
-                # AGGRESSIVE
-                logging.debug("Starting AGGRESSIVE attack")
-                # List all injectable input types text, textarea, etc.
-                if parameter.itype in ["text", "textarea", "password", "email", "hidden"]:
-                    # Arm the payload
-                    form.inputs[parameter].value = payload
-                    self.use_payload(lookup_id, (form,parameter,payload))
-                elif parameter.itype in ["radio", "checkbox", "select"]:
-                    form.inputs[parameter].override_value = payload
-                    self.use_payload(lookup_id, (form,parameter,payload))
-                elif parameter.itype == "file":
-                    file_payload_template = "<img src=x onerror=xss(%RAND)>"
-                    (lookup_id, payload) = self.arm_payload(file_payload_template)
-                    form.inputs[parameter].value = payload
-                    self.use_payload(lookup_id, (form,parameter,payload))
-                else:
-                    logging.info("AGGRESSIVE: Ignore parameter " + str(parameter))
+    # def arm_payload(self, payload_template):
+    #     # IDs are strings to allow all strings as IDs in the attack table
+    #     lookup_id = str(random.randint(1,100000000))
+    #     payload = payload_template.replace("%RAND", lookup_id)
+    #
+    #     return (lookup_id, payload)
 
-        return form
-
-    def get_payloads(self):
-        payloads = []
-        # %RAND will be replaced, useful for tracking
-        alert_text = "%RAND"
-        xss_payloads = ["<script>xss("+alert_text+")</script>",
-                        "\"'><script>xss("+alert_text+")</script>",
-                        '<img src="x" onerror="xss('+alert_text+')">',
-                        '<a href="" jaekpot-attribute="'+alert_text+'">jaekpot</a>',
-                        'x" jaekpot-attribute="'+alert_text+'" fix=" ',
-                        'x" onerror="xss('+alert_text+')"',
-                        "</title></option><script>xss("+alert_text+")</script>",
-                        ]
-
-        # xss_payloads = ['<a href="" jaekpot-attribute="'+alert_text+'">jaekpot</a>']
-        return xss_payloads
-
-    def arm_payload(self, payload_template):
-        # IDs are strings to allow all strings as IDs in the attack table
-        lookup_id = str(random.randint(1,100000000))
-        payload = payload_template.replace("%RAND", lookup_id)
-
-        return (lookup_id, payload)
-
-    # Adds it to the attack table
-    def use_payload(self, lookup_id, vector_with_payload):
-        self.attack_lookup_table[str(lookup_id)] = {"injected": vector_with_payload,
-                                               "reflected": set()}
+    # # Adds it to the attack table
+    # def use_payload(self, lookup_id, vector_with_payload):
+    #     self.attack_lookup_table[str(lookup_id)] = {"injected": vector_with_payload,
+    #                                            "reflected": set()}
 
     # Checks for successful injections
     # def inspect_attack(self, vector_edge):
@@ -1091,7 +1121,7 @@ class Crawler:
                 if parameter.itype == "text" or parameter.itype == "textarea":
                     # Arm the payload
                     form.inputs[parameter].value = tracker
-                    self.use_tracker(tracker, (form_edge,parameter,tracker))
+                    # self.use_tracker(tracker, (form_edge,parameter,tracker))
 
         self.execute_path(driver, path)
 
