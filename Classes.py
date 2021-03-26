@@ -2,13 +2,13 @@ from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import (StaleElementReferenceException,
-                                       TimeoutException,
-                                       UnexpectedAlertPresentException,
-                                       NoSuchFrameException,
-                                       NoAlertPresentException,
-                                       WebDriverException,
-                                       InvalidElementStateException
-                                       )
+                                        TimeoutException,
+                                        UnexpectedAlertPresentException,
+                                        NoSuchFrameException,
+                                        NoAlertPresentException,
+                                        WebDriverException,
+                                        InvalidElementStateException
+                                        )
 
 from urllib.parse import urlparse, urljoin
 import json
@@ -32,13 +32,16 @@ from extractors.Urls import extract_urls
 from extractors.Iframes import extract_iframes
 from extractors.Ui_forms import extract_ui_forms
 
-
 import logging
-log_file = os.path.join(os.getcwd(), 'logs', 'crawl-'+str(time.time())+'.log')
-logging.basicConfig(filename=log_file, format='%(asctime)s\t%(name)s\t%(levelname)s\t[%(filename)s:%(lineno)d]\t%(message)s', datefmt='%Y-%m-%d:%H:%M:%S', level=logging.DEBUG)
+
+log_file = os.path.join(os.getcwd(), 'logs', 'crawl-' + str(time.time()) + '.log')
+logging.basicConfig(filename=log_file,
+                    format='%(asctime)s\t%(name)s\t%(levelname)s\t[%(filename)s:%(lineno)d]\t%(message)s',
+                    datefmt='%Y-%m-%d:%H:%M:%S', level=logging.DEBUG)
 # Turn off all other loggers that we don't care about.
 for v in logging.Logger.manager.loggerDict.values():
     v.disabled = True
+
 
 # This should be the main class for nodes in the graph
 # Should contain GET/POST, Form data, cookies,
@@ -53,7 +56,7 @@ class Request:
         # self.forms = []
 
     def __repr__(self):
-        #return "["+self.method+"] " + self.url + " (From: " + str(self.parent) + ")"
+        # return "["+self.method+"] " + self.url + " (From: " + str(self.parent) + ")"
         if not self:
             return "NO SELF IN REPR"
 
@@ -80,11 +83,12 @@ class Request:
     def __hash__(self):
         return hash(self.url + self.method)
 
+
 class Graph:
     def __init__(self):
-        self.nodes = [] # TODO: Might want a hash set here
+        self.nodes = []  # TODO: Might want a hash set here
         self.edges = []
-        self.data  = {} # Meta data that can be used for anything
+        self.data = {}  # Meta data that can be used for anything
 
     # Separate node class for storing meta data.
     class Node:
@@ -95,8 +99,10 @@ class Graph:
 
         def __repr__(self):
             return str(self.value)
+
         def __eq__(self, other):
             return self.value == other.value
+
         def __hash__(self):
             return hash(self.value)
 
@@ -111,14 +117,15 @@ class Graph:
             self.value = value
             self.visited = False
             self.parent = parent
+
         def __eq__(self, other):
             return self.n1 == other.n1 and self.n2 == other.n2 and self.value == other.value
+
         def __hash__(self):
-            return hash( hash(self.n1) + hash(self.n2) + hash(self.value))
+            return hash(hash(self.n1) + hash(self.n2) + hash(self.value))
+
         def __repr__(self):
-            return str(self.n1) + " -("+str(self.value)+"["+str(self.visited)+"])-> " + str(self.n2)
-
-
+            return str(self.n1) + " -(" + str(self.value) + "[" + str(self.visited) + "])-> " + str(self.n2)
 
     def add(self, value):
         node = self.Node(value)
@@ -128,24 +135,24 @@ class Graph:
         logging.info("failed to add node %s, already added" % str(value))
         return False
 
-    def create_edge(self, v1, v2 , value, parent=None):
-        n1   = self.Node(v1)
-        n2   = self.Node(v2)
+    def create_edge(self, v1, v2, value, parent=None):
+        n1 = self.Node(v1)
+        n2 = self.Node(v2)
         edge = self.Edge(n1, n2, value, parent)
         return edge
 
     def connect(self, v1, v2, value, parent=None):
-        #print("[connect]",v1,v2,value)
-        n1   = self.Node(v1)
-        n2   = self.Node(v2)
+        # print("[connect]",v1,v2,value)
+        n1 = self.Node(v1)
+        n2 = self.Node(v2)
         edge = self.Edge(n1, n2, value, parent)
 
         p1 = n1 in self.nodes
         p2 = n2 in self.nodes
         p3 = not (edge in self.edges)
-        #print(p1,p2,p3)
+        # print(p1,p2,p3)
         if (p1 and p2 and p3):
-            self.edges.append( edge )
+            self.edges.append(edge)
             return True
         logging.warning("Failed to connect edge, %s (%s %s %s)" % (str(value), p1, p2, p3))
         return False
@@ -159,19 +166,15 @@ class Graph:
         return False
 
     def visit_edge(self, edge):
-        if ( edge in self.edges ):
+        if (edge in self.edges):
             target = self.edges[self.edges.index(edge)]
             target.visited = True
             return True
         return False
 
-
-
     def get_parents(self, value):
         node = self.Node(value)
         return [edge.n1.value for edge in self.edges if node == edge.n2]
-
-
 
     def __repr__(self):
         res = "---GRAPH---\n"
@@ -179,33 +182,34 @@ class Graph:
             res += str(n) + " "
         res += "\n"
         for edge in self.edges:
-            res += str(edge.n1) + " -("+str(edge.value)+"["+str(edge.visited)+"])-> " + str(edge.n2) + "\n"
+            res += str(edge.n1) + " -(" + str(edge.value) + "[" + str(edge.visited) + "])-> " + str(edge.n2) + "\n"
         res += "\n---/GRAPH---"
         return res
 
     # Generates strings that can be pasted into mathematica to draw a graph.
     def toMathematica(self):
-        #res = "data = {"
-        #cons = [ ('"' + str(n1) + '" -> "' + str(n2) + '"') for (n1,n2) in self.edges ]
-        #res += ",".join(cons)
-        #res += "};"
-        #res += "Graph[data, VertexLabels -> All]"
+        # res = "data = {"
+        # cons = [ ('"' + str(n1) + '" -> "' + str(n2) + '"') for (n1,n2) in self.edges ]
+        # res += ",".join(cons)
+        # res += "};"
+        # res += "Graph[data, VertexLabels -> All]"
 
-        cons = [ ('"' + str(edge.n1) + '" -> "' + str(edge.n2) + '"') for edge in self.edges ]
+        cons = [('"' + str(edge.n1) + '" -> "' + str(edge.n2) + '"') for edge in self.edges]
         data = "{" + ",".join(cons) + "}"
 
-        edge_cons = [ ('("' + str(edge.n1) + '" -> "' + str(edge.n2) + '") -> "' + edge.value.method + "," + str(edge.value.method_data) + '"') for edge in self.edges ]
+        edge_cons = [('("' + str(edge.n1) + '" -> "' + str(edge.n2) + '") -> "' + edge.value.method + "," + str(
+            edge.value.method_data) + '"') for edge in self.edges]
         edge_data = "{" + ",".join(edge_cons) + "}"
 
         vertex_labels = 'VertexLabels -> All'
-        edge_labels =  'EdgeLabels -> ' + edge_data
+        edge_labels = 'EdgeLabels -> ' + edge_data
         arrow_size = 'EdgeShapeFunction -> GraphElementData["FilledArrow", "ArrowSize" -> 0.005]'
         vertex_size = 'VertexSize -> 0.1'
         image_size = 'ImageSize->Scaled[3]'
 
         settings = [vertex_labels, edge_labels, arrow_size, vertex_size, image_size]
 
-        res = "Graph["+data+", " + ','.join(settings) + "  ]"
+        res = "Graph[" + data + ", " + ','.join(settings) + "  ]"
 
         return res
 
@@ -247,94 +251,107 @@ class Form:
         self.method = None
         self.inputs = {}
 
-
     # Can we attack this form?
     def attackable(self):
         for input_el in self.inputs:
             if not input_el.itype:
-                return  True
+                return True
             if input_el.itype in ["text", "password", "textarea"]:
-                return  True
+                return True
         return False
-
 
     class Element:
         def __init__(self, itype, name, value):
-            self.itype =  itype
-            self.name  =  name
-            self.value =  value
+            self.itype = itype
+            self.name = name
+            self.value = value
+
         def __repr__(self):
-            return str( (self.itype, self.name, self.value) )
+            return str((self.itype, self.name, self.value))
+
         def __eq__(self, other):
             return (self.itype == other.itype) and (self.name == other.name)
+
         def __hash__(self):
             return hash(hash(self.itype) + hash(self.name))
 
     class SubmitElement:
         def __init__(self, itype, name, value, use):
-            self.itype =  itype
-            self.name  =  name
-            self.value =  value
+            self.itype = itype
+            self.name = name
+            self.value = value
             # If many submit button are available, one must be picked.
-            self.use   =  use
+            self.use = use
 
         def __repr__(self):
-            return str( (self.itype, self.name, self.value, self.use) )
+            return str((self.itype, self.name, self.value, self.use))
+
         def __eq__(self, other):
             return ((self.itype == other.itype) and
-                   (self.name == other.name) and
-                   (self.use == other.use))
+                    (self.name == other.name) and
+                    (self.use == other.use))
+
         def __hash__(self):
             return hash(hash(self.itype) + hash(self.name) + hash(self.use))
 
     class RadioElement:
         def __init__(self, itype, name, value):
-            self.itype   = itype
-            self.name    = name
-            self.value   = value
+            self.itype = itype
+            self.name = name
+            self.value = value
             # Click is used when filling out the form
-            self.click   = False
+            self.click = False
             # User for fuzzing
             self.override_value = ""
+
         def __repr__(self):
-            return str( (self.itype, self.name, self.value, self.override_value) )
+            return str((self.itype, self.name, self.value, self.override_value))
+
         def __eq__(self, other):
             p1 = (self.itype == other.itype)
-            p2 = (self.name  == other.name)
+            p2 = (self.name == other.name)
             p3 = (self.value == other.value)
             return (p1 and p2 and p3)
+
         def __hash__(self):
             return hash(hash(self.itype) + hash(self.name) + hash(self.value))
 
     class SelectElement:
         def __init__(self, itype, name):
-            self.itype     = itype
-            self.name      = name
-            self.options   = []
-            self.selected  = None
+            self.itype = itype
+            self.name = name
+            self.options = []
+            self.selected = None
             self.override_value = ""
+
         def add_option(self, value):
-            self.options.append( value )
+            self.options.append(value)
+
         def __repr__(self):
-            return str( (self.itype, self.name, self.options, self.selected, self.override_value) )
+            return str((self.itype, self.name, self.options, self.selected, self.override_value))
+
         def __eq__(self, other):
-            #return (self.itype == other.itype) and (self.name == other.name) and (self.selected == other.selected)
+            # return (self.itype == other.itype) and (self.name == other.name) and (self.selected == other.selected)
             return (self.itype == other.itype) and (self.name == other.name)
+
         def __hash__(self):
-            #return hash(hash(self.itype) + hash(self.name) + hash(self.selected))
-            return hash(hash(self.itype) + hash(self.name) )
+            # return hash(hash(self.itype) + hash(self.name) + hash(self.selected))
+            return hash(hash(self.itype) + hash(self.name))
 
     class CheckboxElement:
         def __init__(self, itype, name, value, checked):
-            self.itype   = itype
-            self.name    = name
-            self.value   = value
+            self.itype = itype
+            self.name = name
+            self.value = value
             self.checked = checked
             self.override_value = ""
+
         def __repr__(self):
-            return str( (self.itype, self.name, self.value, self.checked) )
+            return str((self.itype, self.name, self.value, self.checked))
+
         def __eq__(self, other):
             return (self.itype == other.itype) and (self.name == other.name) and (self.checked == other.checked)
+
         def __hash__(self):
             return hash(hash(self.itype) + hash(self.name) + hash(self.checked))
 
@@ -348,16 +365,16 @@ class Form:
     def add_input(self, itype, name, value, checked):
         if itype == "radio":
             new_el = self.RadioElement(itype, name, value)
-            key    = self.RadioElement(itype, name, value)
+            key = self.RadioElement(itype, name, value)
         elif itype == "checkbox":
             new_el = self.CheckboxElement(itype, name, value, checked)
-            key    = self.CheckboxElement(itype, name, value, None)
+            key = self.CheckboxElement(itype, name, value, None)
         elif itype == "submit":
             new_el = self.SubmitElement(itype, name, value, True)
-            key    = self.SubmitElement(itype, name, value, None)
+            key = self.SubmitElement(itype, name, value, None)
         else:
             new_el = self.Element(itype, name, value)
-            key    = self.Element(itype, name, value)
+            key = self.Element(itype, name, value)
 
         self.inputs[key] = new_el
         return self.inputs[key]
@@ -366,15 +383,14 @@ class Form:
     def add_button(self, itype, name, value):
         if itype == "submit":
             new_el = self.SubmitElement(itype, name, value, True)
-            key    = self.SubmitElement(itype, name, value, None)
+            key = self.SubmitElement(itype, name, value, None)
         else:
-            logging.error("Unknown button " + str((itype,name,value)))
+            logging.error("Unknown button " + str((itype, name, value)))
             new_el = self.Element(itype, name, value)
-            key    = self.Element(itype, name, value)
+            key = self.Element(itype, name, value)
 
         self.inputs[key] = new_el
         return self.inputs[key]
-
 
     # <textarea>
     def add_textarea(self, name, value):
@@ -389,28 +405,26 @@ class Form:
         self.inputs[new_el] = new_el
         return self.inputs[new_el]
 
-
     def print(self):
         print("[form", self.action, self.method)
         for i in self.inputs:
             print("--", i)
         print("]")
 
-
-
-
-
     # For entire Form
     def __repr__(self):
-        #s  = "Form("+str(len(self.inputs))+", " + str(self.action) + ", " + str(self.method) + ")"+str(self.inputs)
-        s  = "Form("+str(len(self.inputs))+", " + str(self.action) + ", " + str(self.method) + ")"
+        # s  = "Form("+str(len(self.inputs))+", " + str(self.action) + ", " + str(self.method) + ")"+str(self.inputs)
+        s = "Form(" + str(len(self.inputs)) + ", " + str(self.action) + ", " + str(self.method) + ")"
         return s
+
     def __eq__(self, other):
-        return (    self.action == other.action
+        return (self.action == other.action
                 and self.method == other.method
                 and self.inputs == other.inputs)
+
     def __hash__(self):
-        return hash( hash(self.action) + hash(self.method) + hash(frozenset(self.inputs)) )
+        return hash(hash(self.action) + hash(self.method) + hash(frozenset(self.inputs)))
+
 
 # JavaScript events, clicks, onmouse etc.
 class Event:
@@ -421,9 +435,11 @@ class Event:
         self.tag = tag
         self.addr = addr
         self.event_class = c
+
     def __repr__(self):
-        s  = "Event("+str(self.event)+", " + self.addr + ")"
+        s = "Event(" + str(self.event) + ", " + self.addr + ")"
         return s
+
     def __eq__(self, other):
         return (self.function_id == other.function_id and
                 self.id == other.id and
@@ -432,19 +448,20 @@ class Event:
 
     def __hash__(self):
         if self.tag == {}:
-            logging.warning("Strange tag... %s " % str(self.tag) )
+            logging.warning("Strange tag... %s " % str(self.tag))
             self.tag = ""
 
-        return hash( hash(self.function_id) +
-                     hash(self.id) +
-                     hash(self.tag) +
-                     hash(self.addr) )
+        return hash(hash(self.function_id) +
+                    hash(self.id) +
+                    hash(self.tag) +
+                    hash(self.addr))
 
 
 class Iframe:
     def __init__(self, i, src):
         self.id = i
         self.src = src
+
     def __repr__(self):
         id_str = ""
         src_str = ""
@@ -453,35 +470,36 @@ class Iframe:
         if self.src:
             src_str = "src=" + str(self.src)
 
-        s  = "Iframe(" + id_str + "," + src_str +")"
+        s = "Iframe(" + id_str + "," + src_str + ")"
         return s
+
     def __eq__(self, other):
         return (self.id == other.id and
                 self.src == other.src
                 )
 
     def __hash__(self):
-        return hash( hash(self.id) +
-                     hash(self.src)
-                      )
+        return hash(hash(self.id) +
+                    hash(self.src)
+                    )
 
 
 class Ui_form:
-   def __init__(self, sources, submit):
-       self.sources = sources
-       self.submit = submit
+    def __init__(self, sources, submit):
+        self.sources = sources
+        self.submit = submit
 
-   def __repr__(self):
-       return "Ui_form(" + str(self.sources) + ", " + str(self.submit) + ")"
+    def __repr__(self):
+        return "Ui_form(" + str(self.sources) + ", " + str(self.submit) + ")"
 
-   def __eq__(self, other):
-       self_l = set([ source['xpath'] for source in self.sources ])
-       other_l = set([ source['xpath'] for source in other.sources ])
+    def __eq__(self, other):
+        self_l = set([source['xpath'] for source in self.sources])
+        other_l = set([source['xpath'] for source in other.sources])
 
-       return self_l == other_l
+        return self_l == other_l
 
-   def __hash__(self):
-       return hash( frozenset([ source['xpath'] for source in self.sources ]) )
+    def __hash__(self):
+        return hash(frozenset([source['xpath'] for source in self.sources]))
 
 
 class Crawler:
@@ -491,7 +509,7 @@ class Crawler:
         self.url = url
         self.graph = Graph()
 
-        self.session_id = str(time.time()) + "-" + str(random.randint(1,10000000))
+        self.session_id = str(time.time()) + "-" + str(random.randint(1, 10000000))
 
         # Used to track injections. Each injection will have unique key.
         self.attack_lookup_table = {}
@@ -523,14 +541,14 @@ class Crawler:
         req = Request(self.url, "get")
         self.graph.add(self.root_req)
         self.graph.add(req)
-        self.graph.connect(self.root_req, req, CrawlEdge("get", None, None) )
+        self.graph.connect(self.root_req, req, CrawlEdge("get", None, None))
         self.debug_mode = debug_mode
 
         # Path deconstruction
         # TODO arg for this
         if not debug_mode:
             purl = urlparse(self.url)
-            if purl.path :
+            if purl.path:
                 path_builder = ""
                 for d in purl.path.split("/")[:-1]:
                     if d:
@@ -538,8 +556,7 @@ class Crawler:
                         tmp_purl = purl._replace(path=path_builder)
                         req = Request(tmp_purl.geturl(), "get")
                         self.graph.add(req)
-                        self.graph.connect(self.root_req, req, CrawlEdge("get", None, None) )
-
+                        self.graph.connect(self.root_req, req, CrawlEdge("get", None, None))
 
         self.graph.data['urls'] = {}
         self.graph.data['form_urls'] = {}
@@ -547,16 +564,16 @@ class Crawler:
         open("queue.txt", "w+").write("")
         open("command.txt", "w+").write("")
 
-        random.seed( 6 ) # chosen by fair dice roll
+        random.seed(6)  # chosen by fair dice roll
 
         still_work = True
         while still_work:
-            print("-"*50)
+            print("-" * 50)
             new_edges = len([edge for edge in self.graph.edges if edge.visited == False])
             print("Edges left: %s" % str(new_edges))
             try:
-                #f = open("graph.txt", "w")
-                #f.write( self.graph.toMathematica() )
+                # f = open("graph.txt", "w")
+                # f.write( self.graph.toMathematica() )
 
                 if "0" in open("run.flag", "r").read():
                     logging.info("Run set to 0, stop crawling")
@@ -565,9 +582,6 @@ class Crawler:
                     logging.info("Run set to 2, pause crawling")
                     input("Crawler paused, press enter to continue")
                     open("run.flag", "w+").write("3")
-
-
-
 
                 n_gets = 0
                 n_forms = 0
@@ -600,11 +614,11 @@ class Crawler:
                     logging.error(e)
 
                     logging.error("Top level error while crawling")
-                #input("Enter to continue")
+                # input("Enter to continue")
 
             except KeyboardInterrupt:
                 print("CTRL-C, abort mission")
-                #print(self.graph.toMathematica())
+                # print(self.graph.toMathematica())
                 break
 
         print("Done crawling!")
@@ -613,48 +627,41 @@ class Crawler:
         # self.attack()
         self.extract_urls_and_parameters()
 
-
     def extract_urls_and_parameters(self):
 
         print("Extracting URLs")
 
-        # file = open("urls.json", "w")
-        # file.write("{}")
-        # file.close()
-
-        self.check_parameters()
-        self.check_forms()
+        # self.check_parameters()
+        # self.check_forms()
 
         print("DONE!")
 
     def check_parameters(self):
-        commands_to_execute = []
         for edge in self.graph.edges:
-            for node in [edge.n1, edge.n2]:
-                if node.value.url != "ROOTREQ":
-                    edge_cookies = edge.value.cookies
-                    cookies = []
-                    if edge_cookies:
-                        for cookie in edge_cookies:
-                            cookies.append(cookie['name'] + "=" + cookie['value'])
-                    purl = urlparse(node.value.url)
-                    parameters = []
-                    for parameter in purl.query.split("&"):
-                        if parameter:
-                            # Look for ?a=b&c=d
-                            if "=" in parameter:
-                                # Only split on first to allow ?a=b=C => (a, b=c)
-                                (key, value) = parameter.split("=", 1)
-                                json = {node.value.url: {'parameter': key,
-                                                         'cookies': ",".join(cookies)}}
-                                print(json)
-
-                            # Singleton parameters ?x&y&z
-                            else:
-                                json = {node.value.url: {'parameter': parameter,
-                                                         'cookies': ",".join(cookies)}}
-                                print(json)
-
+            # for node in [edge.n1, edge.n2]:
+            node = edge.n2
+            if node.value.url != "ROOTREQ":
+                edge_cookies = edge.value.cookies
+                cookies = []
+                if edge_cookies:
+                    for cookie in edge_cookies:
+                        cookies.append(cookie['name'] + "=" + cookie['value'])
+                purl = urlparse(node.value.url)
+                parameters = []
+                for parameter in purl.query.split("&"):
+                    if parameter:
+                        # Look for ?a=b&c=d
+                        if "=" in parameter:
+                            # Only split on first to allow ?a=b=C => (a, b=c)
+                            (key, value) = parameter.split("=", 1)
+                            parameters.append(key)
+                        # Singleton parameters ?x&y&z
+                        else:
+                            parameters.append(parameter)
+                json = {'url': node.value.url,
+                        'parameters': ",".join(parameters),
+                        'cookies': ",".join(cookies)}
+                print(json)
 
     def check_forms(self):
         for edge in self.graph.edges:
@@ -675,11 +682,12 @@ class Crawler:
                             data.append(form_input.name + "=" + form_input.value)
                             parameters.append(form_input.name)
                     if parameters:
-                        json = {form.action: {'parameter': ",".join(parameters),
-                                              'data': ",".join(data),
-                                              'cookies': ",".join(cookies),
-                                              'method': "POST"}}
-                        print(json)
+                        json_post = {'url': form.action,
+                                     'parameters': ",".join(parameters),
+                                     'data': ",".join(data),
+                                     'cookies': ",".join(cookies),
+                                     'method': "POST"}
+                        print(json_post)
 
                 if form.method == "get":
                     parameters = []
@@ -690,11 +698,12 @@ class Crawler:
                             parameters.append(form_input.name)
 
                     if parameters:
-                        json = {form.action: {'parameter': ",".join(parameters),
-                                              'data': ",".join(data),
-                                              'cookies': ",".join(cookies),
-                                              'method': "GET"}}
-                        print(json)
+                        json_get = ({'url': form.action,
+                                     'parameters': ",".join(parameters),
+                                     'data': ",".join(data),
+                                     'cookies': ",".join(cookies),
+                                     'method': "GET"})
+                        print(json_get)
 
     def extract_vectors(self):
         print("Extracting urls")
@@ -708,7 +717,7 @@ class Crawler:
             if node.value.url != "ROOTREQ":
                 purl = urlparse(node.value.url)
                 if purl.scheme[:4] == "http" and not node.value.url in added:
-                    vectors.append( ("get", node.value.url) )
+                    vectors.append(("get", node.value.url))
                     added.add(node.value.url)
 
         # FORMS and EVENTS
@@ -716,16 +725,16 @@ class Crawler:
             method = edge.value.method
             method_data = edge.value.method_data
             if method == "form":
-                vectors.append( ("form", edge) )
+                vectors.append(("form", edge))
             if method == "event":
                 event = method_data
 
                 # check both for event and onevent, e.g input and oninput
-                print("ATTACK EVENT",event)
+                print("ATTACK EVENT", event)
                 if ((event.event in exploitable_events) or
-                    ("on" + event.event in exploitable_events)):
+                        ("on" + event.event in exploitable_events)):
                     if not event in added:
-                        vectors.append( ("event", edge) )
+                        vectors.append(("event", edge))
                         added.add(event)
 
         return vectors
@@ -761,7 +770,6 @@ class Crawler:
     #         successful_xss = successful_xss.union( self.inspect_attack(url) )
     #
     #     return successful_xss
-
 
     # def attack_event(self, driver, vector_edge):
     #
@@ -811,10 +819,6 @@ class Crawler:
     #
     #     return successful_xss
 
-
-
-
-
     # def attack_get(self, driver, vector):
     #
     #     successful_xss = set()
@@ -859,7 +863,6 @@ class Crawler:
     #
     #     return successful_xss
 
-
     def xss_find_state(self, driver, edge):
         graph = self.graph
         path = rec_find_path(graph, edge)
@@ -874,7 +877,6 @@ class Crawler:
                     form_fill(driver, form)
                 except:
                     logging.error("NO FORM FILL IN xss_find_state")
-
 
     # def fix_form(self, form, payload_template, safe_attack):
     #     alert_text = "%RAND"
@@ -987,14 +989,12 @@ class Crawler:
     #
     #     return successful_xss
 
-
     def reflected_payload(self, lookup_id, location):
         if str(lookup_id) in self.attack_lookup_table:
-            #self.attack_lookup_table[str(lookup_id)]["reflected"].append((self.driver.current_url, location))
+            # self.attack_lookup_table[str(lookup_id)]["reflected"].append((self.driver.current_url, location))
             self.attack_lookup_table[str(lookup_id)]["reflected"].add((self.driver.current_url, location))
         else:
             logging.warning("Could not find lookup_id %s, perhaps from an older attack session?" % lookup_id)
-
 
     # Surprisingly tricky to get the string/int types right for numeric ids...
     def get_table_entry(self, lookup_id):
@@ -1014,7 +1014,7 @@ class Crawler:
             method_data = edge_in_path.value.method_data
             logging.info("find_state method %s" % method)
             if method == "get":
-                if allow_edge(graph, edge_in_path ):
+                if allow_edge(graph, edge_in_path):
                     driver.get(edge_in_path.n2.value.url)
                     # self.inspect_attack(edge_in_path)
                 else:
@@ -1059,7 +1059,6 @@ class Crawler:
                     return False
         return True
 
-
     def get_tracker(self):
         letters = string.ascii_lowercase
         return ''.join(random.choice(letters) for i in range(8))
@@ -1077,7 +1076,7 @@ class Crawler:
                     self.io_graph[tracker]['reflected'].add(vector_edge)
                     print("Found from tracker! " + str(vector_edge))
                     logging.info("Found from tracker! " + str(vector_edge))
-                    #print(self.io_graph[tracker])
+                    # print(self.io_graph[tracker])
 
                     prev_edge = self.io_graph[tracker]['injected'][0]
                     # attackable =  prev_edge.value.method_data.attackable()
@@ -1085,8 +1084,6 @@ class Crawler:
                     #     self.path_attack_form(self.driver, prev_edge, vector_edge)
         except:
             print("Failed to find tracker in body_text")
-
-
 
     def track_form(self, driver, vector_edge):
         successful_xss = set()
@@ -1096,7 +1093,7 @@ class Crawler:
 
         form_edges = []
         for edge in path:
-            if edge.value.method=="form":
+            if edge.value.method == "form":
                 form_edges.append(edge)
 
         for form_edge in form_edges:
@@ -1112,14 +1109,13 @@ class Crawler:
         self.execute_path(driver, path)
 
         # Inspect
-        inspect_tracker =  self.inspect_tracker(vector_edge)
-        #if inspect_result:
-            #successful_xss = successful_xss.union(inspect_result)
-            #logging.info("Found injection, don't test all")
-            #break
+        inspect_tracker = self.inspect_tracker(vector_edge)
+        # if inspect_result:
+        # successful_xss = successful_xss.union(inspect_result)
+        # logging.info("Found injection, don't test all")
+        # break
 
         return successful_xss
-
 
     # def path_attack_form(self, driver, vector_edge, check_edge=None):
     #
@@ -1217,10 +1213,6 @@ class Crawler:
     #
     #     return successful_xss
 
-
-
-
-
     def attack(self):
         driver = self.driver
         successful_xss = set()
@@ -1250,10 +1242,10 @@ class Crawler:
         #         successful_xss = successful_xss.union(event_xss)
         #     event_c += 1
 
-        forms_to_attack = [ (vector_type,vector) for (vector_type, vector) in vectors if vector_type == "form" ]
+        forms_to_attack = [(vector_type, vector) for (vector_type, vector) in vectors if vector_type == "form"]
         form_c = 0
-        for (vector_type,vector) in forms_to_attack:
-            print("Progress (forms): ", form_c , "/", len(forms_to_attack))
+        for (vector_type, vector) in forms_to_attack:
+            print("Progress (forms): ", form_c, "/", len(forms_to_attack))
             if vector_type == "form":
                 print("Vector type = form")
                 # form_xss = self.attack_form(driver, vector, attack_lookup_table)
@@ -1268,23 +1260,19 @@ class Crawler:
                 # successful_xss = successful_xss.union(form_xss)
             form_c += 1
 
-
-
-        gets_to_attack = [ (vector_type,vector) for (vector_type, vector) in vectors if vector_type == "get" ]
+        gets_to_attack = [(vector_type, vector) for (vector_type, vector) in vectors if vector_type == "get"]
         get_c = 0
-        for (vector_type,vector) in gets_to_attack:
-            print("Progress (get): ", get_c , "/", len(gets_to_attack))
+        for (vector_type, vector) in gets_to_attack:
+            print("Progress (get): ", get_c, "/", len(gets_to_attack))
             if vector_type == "get":
                 print("Vector type = get")
                 # get_xss = self.attack_get(driver, vector)
                 # successful_xss = successful_xss.union(get_xss)
             get_c += 1
 
-
         # Finally try a single 404 attack
         # not_found_xss = self.attack_404(driver, attack_lookup_table)
         # successful_xss = successful_xss.union(not_found_xss)
-
 
         # Quickly check for stored.
         # quick_xss = self.quick_check_xss(driver, vectors)
@@ -1308,11 +1296,10 @@ class Crawler:
 
         print("ATTACK TABLE\n\n\n\n")
 
-        for (k,v) in self.attack_lookup_table.items():
+        for (k, v) in self.attack_lookup_table.items():
             if v["reflected"]:
-                print(k,v)
-                print("--"*50)
-
+                print(k, v)
+                print("--" * 50)
 
     # Quickly check all GET urls for XSS
     # Might be worth extending to full re-crawl
@@ -1341,11 +1328,12 @@ class Crawler:
             print("User supplied url: ", user_url)
             logging.info("Adding user from URLs " + user_url)
 
-            req = Request(user_url,"get")
+            req = Request(user_url, "get")
             current_cookies = driver.get_cookies()
-            new_edge = graph.create_edge(self.root_req, req, CrawlEdge(req.method, None, current_cookies), graph.data['prev_edge'] )
+            new_edge = graph.create_edge(self.root_req, req, CrawlEdge(req.method, None, current_cookies),
+                                         graph.data['prev_edge'])
             graph.add(req)
-            graph.connect(self.root_req, req, CrawlEdge(req.method, None, current_cookies), graph.data['prev_edge'] )
+            graph.connect(self.root_req, req, CrawlEdge(req.method, None, current_cookies), graph.data['prev_edge'])
 
             print(new_edge)
 
@@ -1356,8 +1344,7 @@ class Crawler:
             if successful:
                 return new_edge
             else:
-                logging.error("Could not load URL from user " + str(new_edge) )
-
+                logging.error("Could not load URL from user " + str(new_edge))
 
         # Print all forms left to visit
         # for edge in [edge for edge in graph.edges if edge.value.method == "form" and edge.visited == False]:
@@ -1366,7 +1353,6 @@ class Crawler:
         #     for inputs in cform.inputs:
         #         print("--", inputs)
         #     print()
-
 
         # Always handle the iframes
         list_to_use = [edge for edge in graph.edges if edge.value.method == "iframe" and edge.visited == False]
@@ -1395,14 +1381,13 @@ class Crawler:
         #         graph.data['form_urls'] = {}
         #         self.early_gets += 1
 
-
         if not list_to_use and 'prev_edge' in graph.data:
             prev_edge = graph.data['prev_edge']
 
             if prev_edge.value.method == "form":
 
-                #print("DONES:")
-                #done_forms = self.attacked_forms
+                # print("DONES:")
+                # done_forms = self.attacked_forms
 
                 # for (form, hits) in done_forms.items():
                 #     print(form, hits)
@@ -1418,14 +1403,14 @@ class Crawler:
                     print("prev was form, ATTACK")
                     logging.info("prev was form, ATTACK, " + str(prev_form))
                     # TODO should we skip attacking some elements?
-                    #attackable =  prev_edge.value.method_data.attackable()
-                    #if attackable:
+                    # attackable =  prev_edge.value.method_data.attackable()
+                    # if attackable:
                     # self.path_attack_form(driver, prev_edge)
                     if not prev_form in self.attacked_forms:
                         self.attacked_forms[prev_form] = 0
                     self.attacked_forms[prev_form] += 1
 
-                    #else:
+                    # else:
                     #    logging.info("Can not attack prev form")
 
                     print("prev was form, TRACK")
@@ -1457,12 +1442,13 @@ class Crawler:
                 self.events_in_row = 0
 
         if not list_to_use:
-            random_int = random.randint(0,100)
-            #list_to_use = [edge for edge in graph.edges if edge.value.method == "form" and edge.visited == False]
+            random_int = random.randint(0, 100)
+            # list_to_use = [edge for edge in graph.edges if edge.value.method == "form" and edge.visited == False]
             if not list_to_use:
                 if random_int >= 0 and random_int < 50:
                     print("Looking for form")
-                    list_to_use = [edge for edge in graph.edges if edge.value.method == "form" and edge.visited == False]
+                    list_to_use = [edge for edge in graph.edges if
+                                   edge.value.method == "form" and edge.visited == False]
                 elif random_int >= 50 and random_int < 80:
                     print("Looking for get")
                     list_to_use = [edge for edge in graph.edges if edge.value.method == "get" and edge.visited == False]
@@ -1472,19 +1458,21 @@ class Crawler:
                 else:
                     print("Looking for event")
                     print("--Clicks")
-                    list_to_use = [edge for edge in graph.edges if edge.value.method == "event" and ("click" in edge.value.method_data.event) and edge.visited == False]
+                    list_to_use = [edge for edge in graph.edges if edge.value.method == "event" and (
+                                "click" in edge.value.method_data.event) and edge.visited == False]
                     if not list_to_use:
                         print("--No clicks found, check all")
-                        list_to_use = [edge for edge in graph.edges if edge.value.method == "event" and edge.visited == False]
+                        list_to_use = [edge for edge in graph.edges if
+                                       edge.value.method == "event" and edge.visited == False]
 
         # Try fallback to GET
         if not list_to_use:
             logging.warning("Falling back to GET")
             list_to_use = [edge for edge in graph.edges if edge.value.method == "get" and edge.visited == False]
             list_to_use = linkrank(list_to_use, graph.data['urls'])
-            #list_to_use = new_files(list_to_use, graph.data['urls'])
+            # list_to_use = new_files(list_to_use, graph.data['urls'])
 
-        #for edge in graph.edges:
+        # for edge in graph.edges:
         for edge in list_to_use:
             if edge.visited == False:
                 if not check_edge(driver, graph, edge):
@@ -1506,9 +1494,7 @@ class Crawler:
                     if successful:
                         return edge
 
-
         return None
-
 
     def load_page(self, driver, graph):
         request = None
@@ -1522,14 +1508,12 @@ class Crawler:
         request = edge.n2.value
 
         logging.info("Current url: " + driver.current_url)
-        logging.info("Crawl (edge): " +  str(edge) )
-        print("Crawl (edge): " +  str(edge) )
+        logging.info("Crawl (edge): " + str(edge))
+        print("Crawl (edge): " + str(edge))
         # logging.info("Depth (full, dom): (%s, %s)" % ( str(depth(edge)), str(dom_depth(edge)) ) )
         # print("Depth (full, dom): (%s, %s)" % ( str(depth(edge)), str(dom_depth(edge)) ) )
 
-        return (edge,request)
-
-
+        return (edge, request)
 
     # Actually not recursive (TODO change name)
     def rec_crawl(self):
@@ -1547,10 +1531,10 @@ class Crawler:
                     print("EDGE FROM ", self.io_graph[tracker]['injected'], "to", self.io_graph[tracker]['reflected'])
 
             f = open("graph_mathematica.txt", "w")
-            f.write( self.graph.toMathematica() )
+            f.write(self.graph.toMathematica())
 
-            #input("Press enter to kill")
-            #driver.close()
+            # input("Press enter to kill")
+            # driver.close()
             return False
 
         (edge, request) = todo
@@ -1561,9 +1545,8 @@ class Crawler:
         if edge.value.method == "get":
             for e in graph.edges:
                 if (edge.n2 == e.n2) and (edge != e) and (e.value.method == "get"):
-                    #print("Fake visit", e)
+                    # print("Fake visit", e)
                     graph.visit_edge(e)
-
 
         # Wait if needed
         try:
@@ -1593,21 +1576,20 @@ class Crawler:
             todo = json.loads(resps)
             for t in todo:
                 try:
-                    if t['function_name']: # WIVET 19 results in empty name, TODO find why
+                    if t['function_name']:  # WIVET 19 results in empty name, TODO find why
                         driver.execute_script(t['function_name'] + "()")
                 except:
                     logging.warning("Could not execute javascript function in timeout " + str(t))
         except:
             logging.warning("No timeouts from stringify")
 
-        
         early_state = self.early_gets < self.max_early_gets
         login_form = find_login_form(driver, graph, early_state)
 
         if login_form:
             logging.info("Found login form")
             print("We want to test edge: ", edge)
-            #input("good?")
+            # input("good?")
             new_form = set_form_values(set([login_form])).pop()
             try:
                 print("Logging in")
@@ -1632,7 +1614,7 @@ class Crawler:
             alert.dismiss()
         wait_json = driver.execute_script("return JSON.stringify(need_to_wait)")
         wait = json.loads(wait_json)
-        #print("Time to wait, based on timeouts, ", wait)
+        # print("Time to wait, based on timeouts, ", wait)
         if wait:
             time.sleep(1)
 
@@ -1642,10 +1624,10 @@ class Crawler:
         logging.info("Adding requests from URLs")
         for req in reqs:
             logging.info("from URLs %s " % str(req))
-            new_edge = graph.create_edge(request, req, CrawlEdge(req.method, None, current_cookies), edge )
+            new_edge = graph.create_edge(request, req, CrawlEdge(req.method, None, current_cookies), edge)
             if allow_edge(graph, new_edge):
                 graph.add(req)
-                graph.connect(request, req, CrawlEdge(req.method, None, current_cookies), edge )
+                graph.connect(request, req, CrawlEdge(req.method, None, current_cookies), edge)
             else:
                 logging.info("Not allowed to add edge: %s" % new_edge)
 
@@ -1653,10 +1635,10 @@ class Crawler:
         for form in forms:
             req = Request(form.action, form.method)
             logging.info("from forms %s " % str(req))
-            new_edge = graph.create_edge( request, req, CrawlEdge("form", form, current_cookies), edge )
+            new_edge = graph.create_edge(request, req, CrawlEdge("form", form, current_cookies), edge)
             if allow_edge(graph, new_edge):
                 graph.add(req)
-                graph.connect(request, req, CrawlEdge("form", form, current_cookies), edge )
+                graph.connect(request, req, CrawlEdge("form", form, current_cookies), edge)
             else:
                 logging.info("Not allowed to add edge: %s" % new_edge)
 
@@ -1665,10 +1647,10 @@ class Crawler:
             req = Request(request.url, "event")
             logging.info("from events %s " % str(req))
 
-            new_edge = graph.create_edge( request, req, CrawlEdge("event", event, current_cookies), edge )
+            new_edge = graph.create_edge(request, req, CrawlEdge("event", event, current_cookies), edge)
             if allow_edge(graph, new_edge):
                 graph.add(req)
-                graph.connect(request, req, CrawlEdge("event", event, current_cookies), edge )
+                graph.connect(request, req, CrawlEdge("event", event, current_cookies), edge)
             else:
                 logging.info("Not allowed to add edge: %s" % new_edge)
 
@@ -1677,10 +1659,10 @@ class Crawler:
             req = Request(iframe.src, "iframe")
             logging.info("from iframes %s " % str(req))
 
-            new_edge = graph.create_edge( request, req, CrawlEdge("iframe", iframe, current_cookies), edge )
+            new_edge = graph.create_edge(request, req, CrawlEdge("iframe", iframe, current_cookies), edge)
             if allow_edge(graph, new_edge):
                 graph.add(req)
-                graph.connect(request, req, CrawlEdge("iframe", iframe, current_cookies), edge )
+                graph.connect(request, req, CrawlEdge("iframe", iframe, current_cookies), edge)
             else:
                 logging.info("Not allowed to add edge: %s" % new_edge)
 
@@ -1689,14 +1671,14 @@ class Crawler:
             req = Request(driver.current_url, "ui_form")
             logging.info("from ui_forms %s " % str(req))
 
-            new_edge = graph.create_edge( request, req, CrawlEdge("ui_form", ui_form, current_cookies), edge )
+            new_edge = graph.create_edge(request, req, CrawlEdge("ui_form", ui_form, current_cookies), edge)
             if allow_edge(graph, new_edge):
                 graph.add(req)
-                graph.connect(request, req, CrawlEdge("ui_form", ui_form, current_cookies), edge )
+                graph.connect(request, req, CrawlEdge("ui_form", ui_form, current_cookies), edge)
             else:
                 logging.info("Not allowed to add edge: %s" % new_edge)
 
-        #print(graph.toMathematica())
+        # print(graph.toMathematica())
 
         # Try to clean up alerts
         try:
@@ -1709,7 +1691,7 @@ class Crawler:
         time.sleep(0.1)
         # self.inspect_attack(edge)
         self.inspect_tracker(edge)
-        #input("press enter to step")
+        # input("press enter to step")
 
         if "3" in open("run.flag", "r").read():
             logging.info("Run set to 3, pause each step")
@@ -1738,10 +1720,10 @@ class CrawlEdge:
 
     def __repr__(self):
         return str(self.method) + " " + str(self.method_data)
+
     # Cookies are not considered for equality.
     def __eq__(self, other):
         return (self.method == other.method and self.method_data == other.method_data)
 
     def __hash__(self):
-        return hash( hash(self.method) + hash(self.method_data) )
-
+        return hash(hash(self.method) + hash(self.method_data))
