@@ -225,7 +225,7 @@ class Graph:
     #     assert len(g1.nodes)==2 and len(g1.edges) == 1 == True
     #     #print(g1)
     #
-    # 
+    #
     #     g2 = Graph()
     #     p1 = Request("https://example.com/1.html", "get")
     #     p2 = Request("https://example.com/2.html", "get")
@@ -534,6 +534,13 @@ class Crawler:
         self.done_form = {}
         self.max_done_form = 5
 
+        # Get file descriptors for ModuleMatcher
+        self.write_fd = int(os.environ['crawler_write_fd'])
+        self.read_fd = int(os.environ['crawler_read_fd'])
+        self.crawler_pipe_output = os.fdopen(self.write_fd, "w",buffering=1)
+        self.crawler_pipe_input = os.fdopen(self.read_fd, "r",buffering=1)
+
+
         logging.info("Init crawl on " + url)
 
     def start(self, debug_mode=False):
@@ -631,7 +638,7 @@ class Crawler:
 
         print("Extracting URLs")
 
-        # self.check_parameters()
+        self.check_parameters()
         # self.check_forms()
 
         print("DONE!")
@@ -661,7 +668,8 @@ class Crawler:
                 json = {'url': node.value.url,
                         'parameters': ",".join(parameters),
                         'cookies': ",".join(cookies)}
-                print(json)
+                json_string = str(json)+"\n" # Added newline to get the write to flush after each line below
+                os.write(self.write_fd,bytes(json_string.encode()))
 
     def check_forms(self):
         for edge in self.graph.edges:

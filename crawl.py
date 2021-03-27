@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description='Crawler')
 parser.add_argument("--wivet", help="Run a wivet challenge, use 0 to run all")
 parser.add_argument("--debug", action='store_true',  help="Dont use path deconstruction")
 parser.add_argument("--url", help="Custom URL to crawl")
+parser.add_argument("--matcher", action='store_true', help="Used when the crawler is called by ModuleMatcher")
 args = parser.parse_args()
 
 # Clean form_files/dynamic
@@ -57,10 +58,7 @@ if args.wivet:
     Crawler(driver, url).start()
 elif args.url:
     url = args.url
+    #if matcher do stuff if you want a clean solution
     Crawler(driver, url).start(args.debug)
 else:
     print("Please use --wivet or --url")
-
-
-
-
