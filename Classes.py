@@ -652,7 +652,7 @@ class Crawler:
                 cookies = []
                 if edge_cookies:
                     for cookie in edge_cookies:
-                        cookies.append(cookie['name'] + "=" + cookie['value'])
+                        cookies.append(cookie["name"] + "=" + cookie["value"])
                 purl = urlparse(node.value.url)
                 parameters = []
                 for parameter in purl.query.split("&"):
@@ -665,11 +665,23 @@ class Crawler:
                         # Singleton parameters ?x&y&z
                         else:
                             parameters.append(parameter)
-                json = {'url': node.value.url,
-                        'parameters': ",".join(parameters),
-                        'cookies': ",".join(cookies)}
-                json_string = str(json)+"\n" # Added newline to get the write to flush after each line below
-                os.write(self.write_fd,bytes(json_string.encode()))
+                json_param = {"url": node.value.url,
+                        "parameters": ",".join(parameters),
+                        "cookies": ",".join(cookies)}
+
+                json_param = json.dumps(json_param) #Needed to encapsulate keys in quotes (like "url":"http://...")
+
+                #json_string = str(json)+"\n" # There must be a neater way to make sure there is a flush after each write, than putting
+                # this newline char at the end of them. I tried to play around with "self.crawler_pipe_output.flush()" below the write
+                # but no dice. I also tried exchanging the write below to self.crawler_pipe_output.write(json_string) but the flush still
+                # didn't work.
+                #os.write(self.write_fd,bytes(json_string.encode()))
+                self.crawler_pipe_output.write(str(json_param))
+                self.crawler_pipe_output.write("\n")
+                #self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+                # When we want to fix a delimiter: https://stackoverflow.com/questions/45304492/python-custom-delimiter-for-read-or-readline
+                #self.crawler_pipe_output.flush()
+
 
     def check_forms(self):
         for edge in self.graph.edges:
@@ -697,6 +709,10 @@ class Crawler:
                                      'method': "POST"}
                         print(json_post)
 
+                        json_post = json.dumps(json_post) #Needed to encapsulate keys in quotes (like "url":"http://...")
+                        self.crawler_pipe_output.write(str(json_post))
+                        self.crawler_pipe_output.write("\n")
+
                 if form.method == "get":
                     parameters = []
                     data = []
@@ -706,12 +722,16 @@ class Crawler:
                             parameters.append(form_input.name)
 
                     if parameters:
-                        json_get = ({'url': form.action,
-                                     'parameters': ",".join(parameters),
-                                     'data': ",".join(data),
-                                     'cookies': ",".join(cookies),
-                                     'method': "GET"})
+                        json_get = ({"url": form.action,
+                                     "parameters": ",".join(parameters),
+                                     "data": ",".join(data),
+                                     "cookies": ",".join(cookies),
+                                     "method": "GET"})
                         print(json_get)
+
+                        json_get = json.dumps(json_get) #Needed to encapsulate keys in quotes (like "url":"http://...")
+                        self.crawler_pipe_output.write(str(json_get))
+                        self.crawler_pipe_output.write("\n")
 
     def extract_vectors(self):
         print("Extracting urls")
