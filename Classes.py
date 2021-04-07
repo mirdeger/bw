@@ -639,7 +639,7 @@ class Crawler:
         print("Extracting URLs")
 
         self.check_parameters()
-        # self.check_forms()
+        self.check_forms()
 
         print("DONE!")
 
