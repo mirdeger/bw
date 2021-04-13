@@ -677,8 +677,8 @@ class Crawler:
                 # didn't work.
                 #os.write(self.write_fd,bytes(json_string.encode()))
                 self.crawler_pipe_output.write(str(json_param))
-                self.crawler_pipe_output.write("\n")
-                #self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+                #self.crawler_pipe_output.write("\n")
+                self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
                 # When we want to fix a delimiter: https://stackoverflow.com/questions/45304492/python-custom-delimiter-for-read-or-readline
                 #self.crawler_pipe_output.flush()
 
