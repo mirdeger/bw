@@ -670,17 +670,8 @@ class Crawler:
                         "cookies": ",".join(cookies)}
 
                 json_param = json.dumps(json_param) #Needed to encapsulate keys in quotes (like "url":"http://...")
-
-                #json_string = str(json)+"\n" # There must be a neater way to make sure there is a flush after each write, than putting
-                # this newline char at the end of them. I tried to play around with "self.crawler_pipe_output.flush()" below the write
-                # but no dice. I also tried exchanging the write below to self.crawler_pipe_output.write(json_string) but the flush still
-                # didn't work.
-                #os.write(self.write_fd,bytes(json_string.encode()))
                 self.crawler_pipe_output.write(str(json_param))
-                #self.crawler_pipe_output.write("\n")
                 self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-                # When we want to fix a delimiter: https://stackoverflow.com/questions/45304492/python-custom-delimiter-for-read-or-readline
-                #self.crawler_pipe_output.flush()
 
 
     def check_forms(self):
@@ -711,7 +702,7 @@ class Crawler:
 
                         json_post = json.dumps(json_post) #Needed to encapsulate keys in quotes (like "url":"http://...")
                         self.crawler_pipe_output.write(str(json_post))
-                        self.crawler_pipe_output.write("\n")
+                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
 
                 if form.method == "get":
                     parameters = []
@@ -731,7 +722,7 @@ class Crawler:
 
                         json_get = json.dumps(json_get) #Needed to encapsulate keys in quotes (like "url":"http://...")
                         self.crawler_pipe_output.write(str(json_get))
-                        self.crawler_pipe_output.write("\n")
+                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
 
     def extract_vectors(self):
         print("Extracting urls")
