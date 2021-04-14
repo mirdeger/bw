@@ -6,7 +6,9 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, UnexpectedAlertPresentException, NoSuchFrameException, NoAlertPresentException, ElementNotVisibleException, InvalidElementStateException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, \
+    UnexpectedAlertPresentException, NoSuchFrameException, NoAlertPresentException, ElementNotVisibleException, \
+    InvalidElementStateException
 from urllib.parse import urlparse, urljoin
 import json
 import pprint
@@ -28,20 +30,23 @@ from extractors.Forms import extract_forms, parse_form
 from extractors.Urls import extract_urls
 from extractors.Iframes import extract_iframes
 
+matcher = True
+
 
 # From: https://stackoverflow.com/a/47298910
 def send(driver, cmd, params={}):
-  resource = "/session/%s/chromium/send_command_and_get_result" % driver.session_id
-  url = driver.command_executor._url + resource
-  body = json.dumps({'cmd': cmd, 'params': params})
-  response = driver.command_executor._request('POST', url, body)
-  if "status" in response:
-    logging.error(response)
-    #raise Exception(response.get('value'))
-  #return response.get('value')
+    resource = "/session/%s/chromium/send_command_and_get_result" % driver.session_id
+    url = driver.command_executor._url + resource
+    body = json.dumps({'cmd': cmd, 'params': params})
+    response = driver.command_executor._request('POST', url, body)
+    if "status" in response:
+        logging.error(response)
+        # raise Exception(response.get('value'))
+    # return response.get('value')
+
 
 def add_script(driver, script):
-  send(driver, "Page.addScriptToEvaluateOnNewDocument", {"source": script})
+    send(driver, "Page.addScriptToEvaluateOnNewDocument", {"source": script})
 
 
 ## Benjamin
@@ -56,17 +61,9 @@ def xpath_row_to_cell(addr):
     # Instead, the onclick applies to all cells in the row.
     # Therefore, we pick the first cell.
     parts = addr.split("/")
-    if(parts[-1][:2] == "tr"):
+    if (parts[-1][:2] == "tr"):
         addr += "/td[1]"
     return addr
-
-
-
-
-
-
-
-
 
 
 def remove_alerts(driver):
@@ -78,7 +75,6 @@ def remove_alerts(driver):
         pass
 
 
-
 def depth(edge):
     depth = 1
     while edge.parent:
@@ -86,12 +82,14 @@ def depth(edge):
         edge = edge.parent
     return depth
 
+
 def dom_depth(edge):
     depth = 1
     while edge.parent and edge.value.method == "event":
         depth = depth + 1
         edge = edge.parent
     return depth
+
 
 # Execute the path necessary to reach the state
 def find_state(driver, graph, edge):
@@ -144,7 +142,7 @@ def find_state(driver, graph, edge):
                     logging.error(e)
                     return False
             else:
-                raise Exception( "Can't handle method (%s) in find_state" % method )
+                raise Exception("Can't handle method (%s) in find_state" % method)
 
     return True
 
@@ -173,7 +171,7 @@ def edge_sort(edge):
 # Check if we should follow edge
 # Could be based on SOP, number of reqs, etc.
 def check_edge(driver, graph, edge):
-    logging.info("Check edge: " + str(edge) )
+    logging.info("Check edge: " + str(edge))
     method = edge.value.method
     method_data = edge.value.method_data
 
@@ -205,7 +203,7 @@ def check_edge(driver, graph, edge):
             return True
     elif method == "event":
         if dom_depth(edge) > 10:
-            logging.info("Dom depth (10) reached! Discard edge %s " % ( str(edge) ) )
+            logging.info("Dom depth (10) reached! Discard edge %s " % (str(edge)))
             return False
         else:
             return True
@@ -213,11 +211,8 @@ def check_edge(driver, graph, edge):
         return True
 
 
-
-
 def follow_edge(driver, graph, edge):
-
-    logging.info("Follow edge: " + str(edge) )
+    logging.info("Follow edge: " + str(edge))
     method = edge.value.method
     method_data = edge.value.method_data
     if method == "get":
@@ -253,12 +248,10 @@ def follow_edge(driver, graph, edge):
             edge.visited = True
             return None
     else:
-        raise Exception( "Can't handle method (%s) in next_unvisited_edge " % method )
+        raise Exception("Can't handle method (%s) in next_unvisited_edge " % method)
 
     # Success
     return True
-
-
 
 
 # Checks if two URLs target the same origin
@@ -266,11 +259,11 @@ def same_origin(u1, u2):
     p1 = urlparse(u1)
     p2 = urlparse(u2)
 
-    return (    p1.scheme == p2.scheme
-            and p1.netloc == p2.netloc )
+    return (p1.scheme == p2.scheme
+            and p1.netloc == p2.netloc)
+
 
 def allow_edge(graph, edge):
-
     crawl_edge = edge.value
 
     if crawl_edge.method == "get":
@@ -280,7 +273,7 @@ def allow_edge(graph, edge):
     elif crawl_edge.method == "iframe":
         to_url = crawl_edge.method_data.src
     elif crawl_edge.method == "event":
-        ignore = ["onerror"] # Some events that we can't/don't trigger
+        ignore = ["onerror"]  # Some events that we can't/don't trigger
         return not (crawl_edge.method_data.event in ignore)
     else:
         logging.info("Unsure about method %s, will allow." % crawl_edge.method)
@@ -297,7 +290,6 @@ def allow_edge(graph, edge):
     # If the sceme is javascript we can't know to final destination, so we allow.
     if parsed_to_url.scheme == "javascript":
         return True
-
 
     so = same_origin(from_url, to_url)
 
@@ -330,19 +322,15 @@ def allow_edge(graph, edge):
         return False
 
 
-
-
-
-
 def execute_event(driver, do):
-    logging.info("We need to trigger [" +  do.event + "] on " + do.addr)
+    logging.info("We need to trigger [" + do.event + "] on " + do.addr)
 
     do.addr = xpath_row_to_cell(do.addr)
 
     try:
-        if   do.event == "onclick" or do.event == "click":
-            web_element =  driver.find_element_by_xpath(do.addr)
-            logging.info("Click on %s" % web_element )
+        if do.event == "onclick" or do.event == "click":
+            web_element = driver.find_element_by_xpath(do.addr)
+            logging.info("Click on %s" % web_element)
 
             if web_element.is_displayed():
                 web_element.click()
@@ -350,34 +338,34 @@ def execute_event(driver, do):
                 logging.warning("Trying to click on invisible element. Use JavaScript")
                 driver.execute_script("arguments[0].click()", web_element)
         elif do.event == "ondblclick" or do.event == "dblclick":
-            web_element =  driver.find_element_by_xpath(do.addr)
-            logging.info("Double click on %s" % web_element )
+            web_element = driver.find_element_by_xpath(do.addr)
+            logging.info("Double click on %s" % web_element)
             ActionChains(driver).double_click(web_element).perform()
 
-            #if web_element.is_displayed():
+            # if web_element.is_displayed():
             #    web_element.click()
 
         elif do.event == "onmouseout":
-            logging.info("Mouseout on %s" %  driver.find_element_by_xpath(do.addr) )
+            logging.info("Mouseout on %s" % driver.find_element_by_xpath(do.addr))
             driver.find_element_by_xpath(do.addr).click()
             el = driver.find_element_by_xpath(do.addr)
             # TODO find first element in body
             body = driver.find_element_by_xpath("/html/body")
             ActionChains(driver).move_to_element(el).move_to_element(body).perform()
         elif do.event == "onmouseover":
-            logging.info("Mouseover on %s" %  driver.find_element_by_xpath(do.addr) )
+            logging.info("Mouseover on %s" % driver.find_element_by_xpath(do.addr))
             el = driver.find_element_by_xpath(do.addr)
             ActionChains(driver).move_to_element(el).perform()
-        elif  do.event == "onmousedown":
-            logging.info("Click (mousedown) on %s" %  driver.find_element_by_xpath(do.addr) )
+        elif do.event == "onmousedown":
+            logging.info("Click (mousedown) on %s" % driver.find_element_by_xpath(do.addr))
             driver.find_element_by_xpath(do.addr).click()
-        elif  do.event == "onmouseup":
-            logging.info("Mouseup on %s" %  driver.find_element_by_xpath(do.addr) )
+        elif do.event == "onmouseup":
+            logging.info("Mouseup on %s" % driver.find_element_by_xpath(do.addr))
             el = driver.find_element_by_xpath(do.addr)
             ActionChains(driver).move_to_element(el).release().perform()
-        elif  do.event == "change" or do.event == "onchange":
+        elif do.event == "change" or do.event == "onchange":
             el = driver.find_element_by_xpath(do.addr)
-            logging.info("Change %s" %  driver.find_element_by_xpath(do.addr) )
+            logging.info("Change %s" % driver.find_element_by_xpath(do.addr))
             if el.tag_name == "select":
                 # If need to change a select we try the different
                 # options
@@ -395,28 +383,25 @@ def execute_event(driver, do):
                 el.clear()
                 el.send_keys("jAEkPot")
                 el.send_keys(Keys.RETURN)
-        elif  do.event == "input" or do.event == "oninput":
+        elif do.event == "input" or do.event == "oninput":
             el = driver.find_element_by_xpath(do.addr)
             el.clear()
             el.send_keys("jAEkPot")
             el.send_keys(Keys.RETURN)
-            logging.info("oninput %s" %  driver.find_element_by_xpath(do.addr) )
+            logging.info("oninput %s" % driver.find_element_by_xpath(do.addr))
 
-        elif  do.event == "compositionstart":
+        elif do.event == "compositionstart":
             el = driver.find_element_by_xpath(do.addr)
             el.clear()
             el.send_keys("jAEkPot")
             el.send_keys(Keys.RETURN)
-            logging.info("Composition Start %s" %  driver.find_element_by_xpath(do.addr) )
+            logging.info("Composition Start %s" % driver.find_element_by_xpath(do.addr))
 
         else:
-            logging.warning("Warning Unhandled event %s " % str(do.event) )
+            logging.warning("Warning Unhandled event %s " % str(do.event))
     except Exception as e:
         print("Error", do)
         print(e)
-
-
-
 
 
 def form_fill_file(filename):
@@ -433,7 +418,6 @@ def form_fill_file(filename):
     return path
 
 
-
 # The problem is that equality does not cover both cases
 # Different values => Different Edges           (__eq__)
 # Different values => Same form on the webpage  (fuzzy)
@@ -448,23 +432,25 @@ def fuzzy_eq(form1, form2):
             return False
     return True
 
+
 def update_value_with_js(driver, web_element, new_value):
     try:
         new_value = new_value.replace("'", "\\'")
-        driver.execute_script("arguments[0].value = '"+new_value+"'", web_element)
+        driver.execute_script("arguments[0].value = '" + new_value + "'", web_element)
     except Exception as e:
         logging.error(e)
         logging.error(traceback.format_exc())
-        logging.error("faild to update with JS " + str(web_element)  )
+        logging.error("faild to update with JS " + str(web_element))
+
 
 def form_fill(driver, target_form):
-    logging.debug("Filling "+ str(target_form))
+    logging.debug("Filling " + str(target_form))
 
     # Ensure we don't have any alerts before filling in form
     try:
         alert = driver.switch_to_alert()
         alertText = alert.text
-        logging.info("Removed alert: " +  alertText)
+        logging.info("Removed alert: " + alertText)
         alert.accept();
     except:
         logging.info("No alert removed (probably due to there not being any)")
@@ -476,7 +462,7 @@ def form_fill(driver, target_form):
 
         submit_buttons = []
 
-        if( not fuzzy_eq(current_form, target_form) ):
+        if (not fuzzy_eq(current_form, target_form)):
             continue
 
         # TODO handle each element
@@ -492,13 +478,11 @@ def form_fill(driver, target_form):
                 current_form.action = js_form['action'];
 
                 # TODO Need better COMPARE!
-                if( current_form.action == target_form.action and current_form.method ==  target_form.method ):
+                if (current_form.action == target_form.action and current_form.method == target_form.method):
                     for js_el in js_form['elements']:
                         web_el = driver.find_element_by_xpath(js_el['xpath'])
                         inputs.append(web_el)
                     break
-
-
 
         buttons = el.find_elements_by_tag_name("button")
         inputs.extend(buttons)
@@ -511,43 +495,44 @@ def form_fill(driver, target_form):
                 if iel.get_attribute("type") == "radio":
                     # RadioElement has a different equal function where value is important
                     form_iel = Classes.Form.RadioElement(
-                                                     iel_type,
-                                                     iel_name,
-                                                     iel_value
-                                                     )
+                        iel_type,
+                        iel_name,
+                        iel_value
+                    )
                 elif iel.get_attribute("type") == "checkbox":
                     form_iel = Classes.Form.CheckboxElement(
-                                                     iel_type,
-                                                     iel_name,
-                                                     iel_value,
-                                                     None)
+                        iel_type,
+                        iel_name,
+                        iel_value,
+                        None)
                 elif iel.get_attribute("type") == "submit":
                     form_iel = Classes.Form.SubmitElement(
-                                                     iel_type,
-                                                     iel_name,
-                                                     iel_value,
-                                                     None)
+                        iel_type,
+                        iel_name,
+                        iel_value,
+                        None)
                 else:
                     form_iel = Classes.Form.Element(
-                                                     iel_type,
-                                                     iel_name,
-                                                     iel_value
-                                                     )
+                        iel_type,
+                        iel_name,
+                        iel_value
+                    )
                     logging.warning("Default handling for %s " % str(form_iel))
 
                 if form_iel in target_form.inputs:
                     i = target_form.inputs[form_iel]
 
                     if iel.get_attribute("type") == "submit" or iel.get_attribute("type") == "image":
-                        submit_buttons.append( (iel, i) )
+                        submit_buttons.append((iel, i))
                     elif iel.get_attribute("type") == "file":
                         if "/" in i.value:
                             logging.info("Cannot have slash in filename")
                         else:
                             try:
-                                iel.send_keys( form_fill_file(i.value) )
+                                iel.send_keys(form_fill_file(i.value))
                             except Exception as e:
-                                logging.warning("[inputs] Failed to upload file " + str(i.value) + " in " + str(form_iel)  )
+                                logging.warning(
+                                    "[inputs] Failed to upload file " + str(i.value) + " in " + str(form_iel))
                     elif iel.get_attribute("type") == "radio":
                         if i.override_value:
                             update_value_with_js(driver, iel, i.override_value)
@@ -560,43 +545,43 @@ def form_fill(driver, target_form):
                             iel.click()
                     elif iel.get_attribute("type") == "hidden":
                         print("IGNORE HIDDEN")
-                        #update_value_with_js(driver, iel, i.value)
+                        # update_value_with_js(driver, iel, i.value)
                     elif iel.get_attribute("type") in ["text", "email", "url"]:
                         if iel.get_attribute("maxlength"):
                             try:
                                 driver.execute_script("arguments[0].removeAttribute('maxlength')", iel)
                             except Exception as e:
-                                logging.warning("[inputs] faild to change maxlength " + str(form_iel)  )
+                                logging.warning("[inputs] faild to change maxlength " + str(form_iel))
                         try:
                             iel.clear()
                             iel.send_keys(i.value)
                         except Exception as e:
-                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript" )
+                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript")
                             try:
-                                driver.execute_script("arguments[0].value = '"+str(i.value)+"'", iel)
+                                driver.execute_script("arguments[0].value = '" + str(i.value) + "'", iel)
                             except Exception as e:
                                 logging.error(e)
                                 logging.error(traceback.format_exc())
-                                logging.error("[inputs] also faild with JS " + str(form_iel)  )
+                                logging.error("[inputs] also faild with JS " + str(form_iel))
                     elif iel.get_attribute("type") == "password":
                         try:
                             iel.clear()
                             iel.send_keys(i.value)
                         except Exception as e:
-                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript" )
+                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript")
                             update_value_with_js(driver, iel, i.value)
                     else:
-                        logging.warning("[inputs] using default clear/send_keys for " + str(form_iel) )
+                        logging.warning("[inputs] using default clear/send_keys for " + str(form_iel))
                         try:
                             iel.clear()
                             iel.send_keys(i.value)
                         except Exception as e:
-                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript" )
+                            logging.warning("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript")
                             update_value_with_js(driver, iel, i.value)
                 else:
-                    logging.warning("[inputs] could NOT FIND " + str(form_iel) )
+                    logging.warning("[inputs] could NOT FIND " + str(form_iel))
                     logging.warning("--" + str(target_form.inputs))
-                logging.info("Filling in input " + iel.get_attribute("name") )
+                logging.info("Filling in input " + iel.get_attribute("name"))
 
             except Exception as e:
                 logging.error("Could not fill in form")
@@ -606,10 +591,10 @@ def form_fill(driver, target_form):
         # <select>
         selects = el.find_elements_by_tag_name("select")
         for select in selects:
-            form_select = Classes.Form.SelectElement( "select", select.get_attribute("name") )
+            form_select = Classes.Form.SelectElement("select", select.get_attribute("name"))
             if form_select in target_form.inputs:
                 i = target_form.inputs[form_select]
-                selenium_select = Select( select )
+                selenium_select = Select(select)
                 options = selenium_select.options
                 if i.override_value and options:
                     update_value_with_js(driver, options[0], i.override_value)
@@ -623,40 +608,37 @@ def form_fill(driver, target_form):
                                 update_value_with_js(driver, select, i.selected)
                             break
             else:
-                logging.warning("[selects] could NOT FIND " + str(form_select) )
-
-
+                logging.warning("[selects] could NOT FIND " + str(form_select))
 
         # <textarea>
         textareas = el.find_elements_by_tag_name("textarea")
         for ta in textareas:
-            form_ta = Classes.Form.Element( ta.get_attribute("type"),
-                                            ta.get_attribute("name"),
-                                            ta.get_attribute("value") )
+            form_ta = Classes.Form.Element(ta.get_attribute("type"),
+                                           ta.get_attribute("name"),
+                                           ta.get_attribute("value"))
             if form_ta in target_form.inputs:
                 i = target_form.inputs[form_ta]
                 try:
                     ta.clear()
                     ta.send_keys(i.value)
                 except Exception as e:
-                    logging.info("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript" )
+                    logging.info("[inputs] faild to send keys to " + str(form_iel) + " Trying javascript")
                     update_value_with_js(driver, ta, i.value)
             else:
-                logging.warning("[textareas] could NOT FIND " + str(form_ta) )
+                logging.warning("[textareas] could NOT FIND " + str(form_ta))
 
         # <iframes>
         iframes = el.find_elements_by_tag_name("iframe")
         for iframe in iframes:
             form_iframe = Classes.Form.Element("iframe", iframe.get_attribute("id"), "")
 
-
             if form_iframe in target_form.inputs:
                 i = target_form.inputs[form_iframe]
                 try:
-                    iframe_id =  i.name
+                    iframe_id = i.name
                     driver.switch_to.frame(iframe_id)
                     iframe_body = driver.find_element_by_tag_name("body")
-                    if(iframe_body.get_attribute("contenteditable") == "true"):
+                    if (iframe_body.get_attribute("contenteditable") == "true"):
                         iframe_body.clear()
                         iframe_body.send_keys(i.value)
                     else:
@@ -669,7 +651,7 @@ def form_fill(driver, target_form):
                     logging.error("Could not clear " + str(form_ta))
                     logging.error(e)
             else:
-                logging.warning("[iframes] could NOT FIND " + str(form_ta) )
+                logging.warning("[iframes] could NOT FIND " + str(form_ta))
 
         # submit
         if submit_buttons:
@@ -683,7 +665,8 @@ def form_fill(driver, target_form):
                         selenium_submit.click()
                         break
                     except ElementNotVisibleException as e:
-                        logging.warning("Cannot click on invisible submit button: " + str(submit_button) + str(target_form) + " trying JavaScript click")
+                        logging.warning("Cannot click on invisible submit button: " + str(submit_button) + str(
+                            target_form) + " trying JavaScript click")
                         logging.info("form_fill Javascript submission of form after failed submit button click")
 
                         driver.execute_script("arguments[0].click()", selenium_submit)
@@ -703,7 +686,7 @@ def form_fill(driver, target_form):
                 try:
                     alert = driver.switch_to_alert()
                     alertText = alert.text
-                    logging.info("Removed alert: " +  alertText)
+                    logging.info("Removed alert: " + alertText)
                     alert.accept();
                 except:
                     logging.info("No alert removed (probably due to there not being any)")
@@ -712,12 +695,11 @@ def form_fill(driver, target_form):
             logging.info("form_fill Javascript submission of form")
             el.submit()
 
-
         # Check if submission caused an "are you sure" alert
         try:
             alert = driver.switch_to_alert()
             alertText = alert.text
-            logging.info("Removed alert: " +  alertText)
+            logging.info("Removed alert: " + alertText)
             alert.accept();
         except:
             logging.info("No alert removed (probably due to there not being any)")
@@ -725,50 +707,49 @@ def form_fill(driver, target_form):
         # End of form fill if everything went well
         return True
 
-    logging.error("error no form found (url:%s, form:%s)" % (driver.current_url, target_form) )
+    logging.error("error no form found (url:%s, form:%s)" % (driver.current_url, target_form))
     return False
-    #raise Exception("error no form found (url:%s, form:%s)" % (driver.current_url, target_form) )
+    # raise Exception("error no form found (url:%s, form:%s)" % (driver.current_url, target_form) )
 
 
 def ui_form_fill(driver, target_form):
-    logging.debug("Filling ui_form "+ str(target_form))
+    logging.debug("Filling ui_form " + str(target_form))
 
     # Ensure we don't have any alerts before filling in form
     try:
         alert = driver.switch_to_alert()
         alertText = alert.text
-        logging.info("Removed alert: " +  alertText)
+        logging.info("Removed alert: " + alertText)
         alert.accept();
     except:
         logging.info("No alert removed (probably due to there not being any)")
         pass
 
-
     for source in target_form.sources:
-        web_element =  driver.find_element_by_xpath(source['xpath'])
+        web_element = driver.find_element_by_xpath(source['xpath'])
 
         if web_element.get_attribute("maxlength"):
             try:
                 driver.execute_script("arguments[0].removeAttribute('maxlength')", web_element)
             except Exception as e:
-                logging.warning("[inputs] faild to change maxlength " + str(web_element)  )
+                logging.warning("[inputs] faild to change maxlength " + str(web_element))
 
         input_value = source['value']
         try:
             web_element.clear()
             web_element.send_keys(input_value)
         except Exception as e:
-            logging.warning("[inputs] faild to send keys to " + str(input_value) + " Trying javascript" )
+            logging.warning("[inputs] faild to send keys to " + str(input_value) + " Trying javascript")
             try:
-                driver.execute_script("arguments[0].value = '"+input_value+"'", web_element)
+                driver.execute_script("arguments[0].value = '" + input_value + "'", web_element)
             except Exception as e:
                 logging.error(e)
                 logging.error(traceback.format_exc())
-                logging.error("[inputs] also faild with JS " + str(web_element)  )
+                logging.error("[inputs] also faild with JS " + str(web_element))
 
-
-    submit_element =  driver.find_element_by_xpath(target_form.submit)
+    submit_element = driver.find_element_by_xpath(target_form.submit)
     submit_element.click()
+
 
 def set_standard_values(old_form):
     form = copy.deepcopy(old_form)
@@ -791,7 +772,7 @@ def set_standard_values(old_form):
             if form_el.options:
                 form_el.selected = form_el.options[0]
             else:
-                logging.warning( str(form_el) + " has no options" )
+                logging.warning(str(form_el) + " has no options")
         elif form_el.itype == "text":
             if form_el.value and form_el.value.isdigit():
                 form_el.value = 1
@@ -807,7 +788,7 @@ def set_standard_values(old_form):
             pass
         elif form_el.itype == "password":
             form_el.value = "jAEkPot"
-            #form_el.value = "jAEkPot1"
+            # form_el.value = "jAEkPot1"
         elif form_el.itype == "number":
             # TODO Look at min/max/step/maxlength to pick valid numbers
             form_el.value = "1"
@@ -816,10 +797,11 @@ def set_standard_values(old_form):
         elif form_el.itype == "button":
             pass
         else:
-            logging.warning( str(form_el) + " was handled by default")
+            logging.warning(str(form_el) + " was handled by default")
             form_el.value = "jAEkPot"
 
     return form
+
 
 def set_submits(forms):
     new_forms = set()
@@ -843,6 +825,7 @@ def set_submits(forms):
 
     return new_forms
 
+
 def set_checkboxes(forms):
     new_forms = set()
     for form in forms:
@@ -854,16 +837,17 @@ def set_checkboxes(forms):
                 new_forms.add(new_form)
     return new_forms
 
+
 def set_form_values(forms):
     logging.info("set_form_values got " + str(len(forms)))
     new_forms = set()
     # Set values for forms.
     # Could also create copies of forms to test different values
     for old_form in forms:
-        new_forms.add( set_standard_values(old_form) )
+        new_forms.add(set_standard_values(old_form))
 
     # Handle submits
-    #forms = copy.deepcopy( new_forms )
+    # forms = copy.deepcopy( new_forms )
     new_forms = set_submits(new_forms)
     new_checkbox_forms = set_checkboxes(new_forms)
     for checkbox_form in new_checkbox_forms:
@@ -876,7 +860,7 @@ def set_form_values(forms):
 
 def enter_iframe(driver, target_frame):
     elem = driver.find_elements_by_tag_name("iframe")
-    elem.extend( driver.find_elements_by_tag_name("frame") )
+    elem.extend(driver.find_elements_by_tag_name("frame"))
 
     for el in elem:
         try:
@@ -901,6 +885,7 @@ def enter_iframe(driver, target_frame):
             return False
     return False
 
+
 def find_login_form(driver, graph, early_state=False):
     forms = extract_forms(driver)
     for form in forms:
@@ -912,7 +897,7 @@ def find_login_form(driver, graph, early_state=False):
                     continue
 
                 # We need to make sure that the form is part of the graph
-                #if early_state or (form in [edge.value.method_data for edge in graph.edges if edge.value.method == "form"]):
+                # if early_state or (form in [edge.value.method_data for edge in graph.edges if edge.value.method == "form"]):
 
                 logging.info("NEED TO LOGIN FOR FORM: " + str(form))
                 return form
@@ -933,11 +918,12 @@ def linkrank(link_edges, visited_list):
         if purl.path in visited_list:
             visited = 1
 
-        tups.append( (edge, (visited, depth, queries)) )
+        tups.append((edge, (visited, depth, queries)))
 
-    tups.sort(key = operator.itemgetter(1))
+    tups.sort(key=operator.itemgetter(1))
 
     return [edge for (edge, _) in tups]
+
 
 def new_files(link_edges, visited_list):
     tups = []
@@ -949,9 +935,9 @@ def new_files(link_edges, visited_list):
         if path not in visited_list:
             print("New file/path: ", path)
 
-        tups.append( (edge, (path in visited_list, path)) )
+        tups.append((edge, (path in visited_list, path)))
 
-    tups.sort(key = operator.itemgetter(1))
+    tups.sort(key=operator.itemgetter(1))
     print(tups)
     input("OK tups?")
 
@@ -967,9 +953,166 @@ def has_csrf(form):
             print(form_input, "is CSRF protection")
     return (not token)
 
+
 # Returns None if the string is empty, otherwise just the string
 def empty2none(s):
     if not s:
         return None
     else:
         return s
+
+
+def extract_urls_and_parameters(self):
+    print("Extracting URLs")
+    check_parameters(self)
+    check_forms(self)
+    print("DONE!")
+
+
+def check_parameters(self):
+    for edge in self.graph.edges:
+        for node in [edge.n1, edge.n2]:
+            if node.value.url != "ROOTREQ":
+                edge_cookies = edge.value.cookies
+                cookies = []
+                if edge_cookies:
+                    for cookie in edge_cookies:
+                        cookies.append(cookie["name"] + "=" + cookie["value"])
+                purl = urlparse(node.value.url)
+                parameters = []
+                for parameter in purl.query.split("&"):
+                    if parameter:
+                        # Look for ?a=b&c=d
+                        if "=" in parameter:
+                            # Only split on first to allow ?a=b=C => (a, b=c)
+                            (key, value) = parameter.split("=", 1)
+                            parameters.append(key)
+                        # Singleton parameters ?x&y&z
+                        else:
+                            parameters.append(parameter)
+                json_param = {"url": node.value.url,
+                              "parameters": ",".join(parameters),
+                              "cookies": ",".join(cookies)}
+                if matcher:
+                    json_param = json.dumps(json_param)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+                    self.crawler_pipe_output.write(str(json_param))
+                    self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+
+
+def check_forms(self):
+    for edge in self.graph.edges:
+        edge_cookies = edge.value.cookies
+        cookies = []
+        if edge_cookies:
+            for cookie in edge_cookies:
+                cookies.append(cookie['name'] + "=" + cookie['value'])
+        method = edge.value.method
+        method_data = edge.value.method_data
+        if method == "form":
+            form = method_data
+            if form.method == "post":
+                parameters = []
+                data = []
+                for form_input in form.inputs.values():
+                    if form_input.value and form_input.name:
+                        data.append(form_input.name + "=" + form_input.value)
+                        parameters.append(form_input.name)
+                if parameters:
+                    json_post = {'url': form.action,
+                                 'parameters': ",".join(parameters),
+                                 'data': ",".join(data),
+                                 'cookies': ",".join(cookies),
+                                 'method': "POST"}
+                    print(json_post)
+                    if matcher:
+                        json_post = json.dumps(
+                            json_post)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+                        self.crawler_pipe_output.write(str(json_post))
+                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+
+            if form.method == "get":
+                parameters = []
+                data = []
+                for form_input in form.inputs.values():
+                    if form_input.value and form_input.name:
+                        data.append(form_input.name + "=" + form_input.value)
+                        parameters.append(form_input.name)
+
+                if parameters:
+                    json_get = ({"url": form.action,
+                                 "parameters": ",".join(parameters),
+                                 "data": ",".join(data),
+                                 "cookies": ",".join(cookies),
+                                 "method": "GET"})
+                    print(json_get)
+                    if matcher:
+                        json_get = json.dumps(
+                            json_get)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+                        self.crawler_pipe_output.write(str(json_get))
+                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+
+
+def extract_parameters(edge):
+    parameters = []
+    for node in [edge.n1, edge.n2]:
+        if node.value.url != "ROOTREQ":
+            purl = urlparse(node.value.url)
+            for parameter in purl.query.split("&"):
+                if parameter:
+                    # Look for ?a=b&c=d
+                    if "=" in parameter:
+                        # Only split on first to allow ?a=b=C => (a, b=c)
+                        (key, value) = parameter.split("=", 1)
+                        parameters.append(key)
+                    # Singleton parameters ?x&y&z
+                    else:
+                        parameters.append(parameter)
+    return parameters
+
+
+def extract_data_from_forms_in_edge(edge, self):
+    form = edge.value.method_data
+    data = []
+    parameters = []
+    for form_input in form.inputs.values():
+        if form_input.value and form_input.name:
+            data.append(form_input.name + "=" + form_input.value)
+            parameters.append(form_input.name)
+    return data, parameters
+
+
+def extract_cookies_from_edge(edge):
+    edge_cookies = edge.value.cookies
+    cookies = []
+    if edge_cookies:
+        for cookie in edge_cookies:
+            cookies.append(cookie['name'] + "=" + cookie['value'])
+    return cookies
+
+
+def send_node_data(edge, self):
+    print("Checking edge")
+
+    cookies = extract_cookies_from_edge(edge)
+    method = edge.value.method
+    data = []
+    parameters = []
+
+    if method == "form":
+        data, parameters = extract_data_from_forms_in_edge(edge, self)
+
+    parameters = parameters + extract_parameters(edge)
+
+    json_node_data = {"url": edge.n1.value.url, # Får inte med löv-noder
+                      "parameters": parameters,
+                      "data": data,
+                      "cookies": ",".join(cookies),
+                      "method": method}
+    print(json_node_data)
+
+    if matcher:
+        json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+        self.crawler_pipe_output.write(str(json_node_data))
+        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+
+    print("Should send node data now")

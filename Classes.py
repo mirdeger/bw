@@ -535,10 +535,11 @@ class Crawler:
         self.max_done_form = 5
 
         # Get file descriptors for ModuleMatcher
-        self.write_fd = int(os.environ['crawler_write_fd'])
-        self.read_fd = int(os.environ['crawler_read_fd'])
-        self.crawler_pipe_output = os.fdopen(self.write_fd, "w",buffering=1)
-        self.crawler_pipe_input = os.fdopen(self.read_fd, "r",buffering=1)
+        if matcher:
+            self.write_fd = int(os.environ['crawler_write_fd'])
+            self.read_fd = int(os.environ['crawler_read_fd'])
+            self.crawler_pipe_output = os.fdopen(self.write_fd, "w",buffering=1)
+            self.crawler_pipe_input = os.fdopen(self.read_fd, "r",buffering=1)
 
 
         logging.info("Init crawl on " + url)
@@ -632,97 +633,9 @@ class Crawler:
 
         # input("ENTER TO ATTACK")
         # self.attack()
-        self.extract_urls_and_parameters()
+        #extract_urls_and_parameters(self)
 
-    def extract_urls_and_parameters(self):
-
-        print("Extracting URLs")
-
-        self.check_parameters()
-        self.check_forms()
-
-        print("DONE!")
-
-    def check_parameters(self):
-        for edge in self.graph.edges:
-            # for node in [edge.n1, edge.n2]:
-            node = edge.n2
-            if node.value.url != "ROOTREQ":
-                edge_cookies = edge.value.cookies
-                cookies = []
-                if edge_cookies:
-                    for cookie in edge_cookies:
-                        cookies.append(cookie["name"] + "=" + cookie["value"])
-                purl = urlparse(node.value.url)
-                parameters = []
-                for parameter in purl.query.split("&"):
-                    if parameter:
-                        # Look for ?a=b&c=d
-                        if "=" in parameter:
-                            # Only split on first to allow ?a=b=C => (a, b=c)
-                            (key, value) = parameter.split("=", 1)
-                            parameters.append(key)
-                        # Singleton parameters ?x&y&z
-                        else:
-                            parameters.append(parameter)
-                json_param = {"url": node.value.url,
-                        "parameters": ",".join(parameters),
-                        "cookies": ",".join(cookies)}
-
-                json_param = json.dumps(json_param) #Needed to encapsulate keys in quotes (like "url":"http://...")
-                self.crawler_pipe_output.write(str(json_param))
-                self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-
-
-    def check_forms(self):
-        for edge in self.graph.edges:
-            edge_cookies = edge.value.cookies
-            cookies = []
-            if edge_cookies:
-                for cookie in edge_cookies:
-                    cookies.append(cookie['name'] + "=" + cookie['value'])
-            method = edge.value.method
-            method_data = edge.value.method_data
-            if method == "form":
-                form = method_data
-                if form.method == "post":
-                    parameters = []
-                    data = []
-                    for form_input in form.inputs.values():
-                        if form_input.value and form_input.name:
-                            data.append(form_input.name + "=" + form_input.value)
-                            parameters.append(form_input.name)
-                    if parameters:
-                        json_post = {'url': form.action,
-                                     'parameters': ",".join(parameters),
-                                     'data': ",".join(data),
-                                     'cookies': ",".join(cookies),
-                                     'method': "POST"}
-                        print(json_post)
-
-                        json_post = json.dumps(json_post) #Needed to encapsulate keys in quotes (like "url":"http://...")
-                        self.crawler_pipe_output.write(str(json_post))
-                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-
-                if form.method == "get":
-                    parameters = []
-                    data = []
-                    for form_input in form.inputs.values():
-                        if form_input.value and form_input.name:
-                            data.append(form_input.name + "=" + form_input.value)
-                            parameters.append(form_input.name)
-
-                    if parameters:
-                        json_get = ({"url": form.action,
-                                     "parameters": ",".join(parameters),
-                                     "data": ",".join(data),
-                                     "cookies": ",".join(cookies),
-                                     "method": "GET"})
-                        print(json_get)
-
-                        json_get = json.dumps(json_get) #Needed to encapsulate keys in quotes (like "url":"http://...")
-                        self.crawler_pipe_output.write(str(json_get))
-                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+        # Might want to do some sort of summary here
 
     def extract_vectors(self):
         print("Extracting urls")
@@ -1726,6 +1639,10 @@ class Crawler:
         # Clear commad
         if found_command:
             open("command.txt", "w+").write("")
+
+        # Send node data to ModuleMatcher
+        #if matcher:
+        send_node_data(edge, self)
 
         return True
 
