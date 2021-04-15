@@ -1097,22 +1097,44 @@ def send_node_data(edge, self):
     method = edge.value.method
     data = []
     parameters = []
+    json_list = []
 
-    if method == "form":
-        data, parameters = extract_data_from_forms_in_edge(edge, self)
 
     parameters = parameters + extract_parameters(edge)
+    for node in [edge.n1, edge.n2]:
+      json_node_data = {"url": node.value.url,
+                        "parameters": ",".join(parameters),
+                        "cookies": ",".join(cookies)}
+      json_list.append(json_node_data)
+      print(json_node_data)
 
-    json_node_data = {"url": edge.n1.value.url, # Får inte med löv-noder
-                      "parameters": parameters,
-                      "data": data,
-                      "cookies": ",".join(cookies),
-                      "method": method}
-    print(json_node_data)
+        # In extract_to_sqlmap there is a if form-method == post before extract_data_from... Needed? What kind of forms don't get posted?
+        # Anyways, I added it for now.
+    #debug_file = open("debug_file.txt","a")
+
+    if method == "form" and edge.value.method_data.method == "post":
+        data, parameters = extract_data_from_forms_in_edge(edge, self)
+        #debug_file.write("WE MADE IT!!!\n")
+        #debug_file.write(str(method)+"\n")
+        #debug_file.write(str(edge.value.method_data)+"\n")
+        #debug_file.write(str(parameters)+"\n")
+        #debug_file.write(str(data)+"\n")
+
+        json_node_data = {"url": edge.value.method_data.action,
+                          "parameters": ",".join(parameters),
+                          "data": ",".join(data),
+                          "cookies": ",".join(cookies),
+                          "method": method}
+        #debug_file.write("HEJ")
+        #debug_file.write(str(json_node_data)+"\n")
+        json_list.append(json_node_data)
+        #debug_file.write(str(json_list))
+        print(json_node_data)
 
     if matcher:
-        json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
-        self.crawler_pipe_output.write(str(json_node_data))
-        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+        for json_node_data in json_list:
+          json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+          self.crawler_pipe_output.write(str(json_node_data))
+          self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
 
     print("Should send node data now")
