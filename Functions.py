@@ -1136,5 +1136,6 @@ def send_node_data(edge, self):
           json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
           self.crawler_pipe_output.write(str(json_node_data))
           self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
+          self.crawler_pipe_output.flush()
 
     print("Should send node data now")
