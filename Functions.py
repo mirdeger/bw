@@ -1052,21 +1052,20 @@ def check_forms(self):
                         self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
 
 
-def extract_parameters(edge):
+def extract_parameters(node):
     parameters = []
-    for node in [edge.n1, edge.n2]:
-        if node.value.url != "ROOTREQ":
-            purl = urlparse(node.value.url)
-            for parameter in purl.query.split("&"):
-                if parameter:
-                    # Look for ?a=b&c=d
-                    if "=" in parameter:
-                        # Only split on first to allow ?a=b=C => (a, b=c)
-                        (key, value) = parameter.split("=", 1)
-                        parameters.append(key)
-                    # Singleton parameters ?x&y&z
-                    else:
-                        parameters.append(parameter)
+    if node.value.url != "ROOTREQ":
+        purl = urlparse(node.value.url)
+        for parameter in purl.query.split("&"):
+            if parameter:
+                # Look for ?a=b&c=d
+                if "=" in parameter:
+                    # Only split on first to allow ?a=b=C => (a, b=c)
+                    (key, value) = parameter.split("=", 1)
+                    parameters.append(key)
+                # Singleton parameters ?x&y&z
+                else:
+                    parameters.append(parameter)
     return parameters
 
 
@@ -1100,8 +1099,8 @@ def send_node_data(edge, self):
     json_list = []
 
 
-    parameters = parameters + extract_parameters(edge)
-    for node in [edge.n1, edge.n2]:
+    for node in [edge.n1, edge.n2]: #extract param från nod. Gör för varje nod.
+      parameters = extract_parameters(node)
       json_node_data = {"url": node.value.url,
                         "parameters": ",".join(parameters),
                         "cookies": ",".join(cookies)}
@@ -1112,25 +1111,20 @@ def send_node_data(edge, self):
         # Anyways, I added it for now.
     #debug_file = open("debug_file.txt","a")
 
-    if method == "form" and edge.value.method_data.method == "post":
+    if method == "form":
         data, parameters = extract_data_from_forms_in_edge(edge, self)
-        #debug_file.write("WE MADE IT!!!\n")
-        #debug_file.write(str(method)+"\n")
-        #debug_file.write(str(edge.value.method_data)+"\n")
-        #debug_file.write(str(parameters)+"\n")
-        #debug_file.write(str(data)+"\n")
-
         json_node_data = {"url": edge.value.method_data.action,
                           "parameters": ",".join(parameters),
                           "data": ",".join(data),
                           "cookies": ",".join(cookies),
-                          "method": method}
+                          "method": edge.value.method_data.method}
         #debug_file.write("HEJ")
         #debug_file.write(str(json_node_data)+"\n")
         json_list.append(json_node_data)
         #debug_file.write(str(json_list))
         print(json_node_data)
 
+    # ADD if method=form and edge.val.. = GET ??
     if matcher:
         for json_node_data in json_list:
           json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
