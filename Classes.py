@@ -1518,7 +1518,11 @@ class Crawler:
         early_state = self.early_gets < self.max_early_gets
         login_form = find_login_form(driver, graph, early_state)
 
+        forms_before_login = set()
         if login_form:
+            # Extract before we login, but also after.
+            forms_before_login = extract_forms(driver)
+
             logging.info("Found login form")
             print("We want to test edge: ", edge)
             # input("good?")
@@ -1532,6 +1536,10 @@ class Crawler:
         # Extract urls, forms, elements, iframe etc
         reqs = extract_urls(driver)
         forms = extract_forms(driver)
+        # Add the forms from before login
+        if forms_before_login:
+            for before_form in forms_before_login:
+                forms.add(before_form)
         forms = set_form_values(forms)
         ui_forms = extract_ui_forms(driver)
         events = extract_events(driver)
