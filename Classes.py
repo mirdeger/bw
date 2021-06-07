@@ -534,23 +534,28 @@ class Crawler:
         self.done_form = {}
         self.max_done_form = 5
 
-        # Get file descriptors for ModuleMatcher
-        if matcher:
-            self.write_fd = int(os.environ['crawler_write_fd'])
-            self.read_fd = int(os.environ['crawler_read_fd'])
-            self.crawler_pipe_output = os.fdopen(self.write_fd, "w",buffering=1)
-            self.crawler_pipe_input = os.fdopen(self.read_fd, "r",buffering=1)
 
 
         logging.info("Init crawl on " + url)
-
-    def start(self, debug_mode=False):
+        # Second argument addded by MATCHER-crew
+    def start(self, debug_mode=False, matcher=False):
         self.root_req = Request("ROOTREQ", "get")
         req = Request(self.url, "get")
         self.graph.add(self.root_req)
         self.graph.add(req)
         self.graph.connect(self.root_req, req, CrawlEdge("get", None, None))
         self.debug_mode = debug_mode
+        # line below added my MATCHER-crew
+        self.matcher = matcher
+        self.debug = open("debugfileclean.txt",'a')
+
+
+        # Get file descriptors for ModuleMatcher. Added by MATCHER-crew
+        if matcher:
+            self.write_fd = int(os.environ['crawler_write_fd'])
+            self.read_fd = int(os.environ['crawler_read_fd'])
+            self.crawler_pipe_output = os.fdopen(self.write_fd, "w",buffering=1)
+            self.crawler_pipe_input = os.fdopen(self.read_fd, "r",buffering=1)
 
         # Path deconstruction
         # TODO arg for this
@@ -1648,8 +1653,10 @@ class Crawler:
         if found_command:
             open("command.txt", "w+").write("")
 
-        # Send node data to ModuleMatcher
-        #if matcher:
+        # send_node_data Added by MATCHER-crew!
+
+        #self.debug.write("matcher = "+str(self.matcher))
+        #if self.matcher:
         send_node_data(edge, self)
 
         return True

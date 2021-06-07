@@ -30,8 +30,6 @@ from extractors.Forms import extract_forms, parse_form
 from extractors.Urls import extract_urls
 from extractors.Iframes import extract_iframes
 
-matcher = True
-
 
 # From: https://stackoverflow.com/a/47298910
 def send(driver, cmd, params={}):
@@ -969,89 +967,6 @@ def extract_urls_and_parameters(self):
     print("DONE!")
 
 
-def check_parameters(self):
-    for edge in self.graph.edges:
-        for node in [edge.n1, edge.n2]:
-            if node.value.url != "ROOTREQ":
-                edge_cookies = edge.value.cookies
-                cookies = []
-                if edge_cookies:
-                    for cookie in edge_cookies:
-                        cookies.append(cookie["name"] + "=" + cookie["value"])
-                purl = urlparse(node.value.url)
-                parameters = []
-                for parameter in purl.query.split("&"):
-                    if parameter:
-                        # Look for ?a=b&c=d
-                        if "=" in parameter:
-                            # Only split on first to allow ?a=b=C => (a, b=c)
-                            (key, value) = parameter.split("=", 1)
-                            parameters.append(key)
-                        # Singleton parameters ?x&y&z
-                        else:
-                            parameters.append(parameter)
-                json_param = {"url": node.value.url,
-                              "parameters": ",".join(parameters),
-                              "cookies": ",".join(cookies)}
-                if matcher:
-                    json_param = json.dumps(json_param)  # Needed to encapsulate keys in quotes (like "url":"http://...")
-                    self.crawler_pipe_output.write(str(json_param))
-                    self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-
-
-def check_forms(self):
-    for edge in self.graph.edges:
-        edge_cookies = edge.value.cookies
-        cookies = []
-        if edge_cookies:
-            for cookie in edge_cookies:
-                cookies.append(cookie['name'] + "=" + cookie['value'])
-        method = edge.value.method
-        method_data = edge.value.method_data
-        if method == "form":
-            form = method_data
-            if form.method == "post":
-                parameters = []
-                data = []
-                for form_input in form.inputs.values():
-                    if form_input.value and form_input.name:
-                        data.append(form_input.name + "=" + form_input.value)
-                        parameters.append(form_input.name)
-                if parameters:
-                    json_post = {'url': form.action,
-                                 'parameters': ",".join(parameters),
-                                 'data': ",".join(data),
-                                 'cookies': ",".join(cookies),
-                                 'method': "POST"}
-                    print(json_post)
-                    if matcher:
-                        json_post = json.dumps(
-                            json_post)  # Needed to encapsulate keys in quotes (like "url":"http://...")
-                        self.crawler_pipe_output.write(str(json_post))
-                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-
-            if form.method == "get":
-                parameters = []
-                data = []
-                for form_input in form.inputs.values():
-                    if form_input.value and form_input.name:
-                        data.append(form_input.name + "=" + form_input.value)
-                        parameters.append(form_input.name)
-
-                if parameters:
-                    json_get = ({"url": form.action,
-                                 "parameters": ",".join(parameters),
-                                 "data": ",".join(data),
-                                 "cookies": ",".join(cookies),
-                                 "method": "GET"})
-                    print(json_get)
-                    if matcher:
-                        json_get = json.dumps(
-                            json_get)  # Needed to encapsulate keys in quotes (like "url":"http://...")
-                        self.crawler_pipe_output.write(str(json_get))
-                        self.crawler_pipe_output.write("[[[JSON_DELIMITER_5345]]]")
-
-
 def extract_parameters(node):
     parameters = []
     if node.value.url != "ROOTREQ":
@@ -1089,8 +1004,8 @@ def extract_cookies_from_edge(edge):
     return cookies
 
 
+# send_node_data function added by MATCHER-crew. Only run if matcher == True
 def send_node_data(edge, self):
-    print("Checking edge")
 
     cookies = extract_cookies_from_edge(edge)
     method = edge.value.method
@@ -1098,18 +1013,12 @@ def send_node_data(edge, self):
     parameters = []
     json_list = []
 
-
-    for node in [edge.n1, edge.n2]: #extract param från nod. Gör för varje nod.
+    for node in [edge.n1, edge.n2]: #extract param from the two nodes in the edge.
       parameters = extract_parameters(node)
       json_node_data = {"url": node.value.url,
                         "parameters": ",".join(parameters),
                         "cookies": ",".join(cookies)}
       json_list.append(json_node_data)
-      print(json_node_data)
-
-        # In extract_to_sqlmap there is a if form-method == post before extract_data_from... Needed? What kind of forms don't get posted?
-        # Anyways, I added it for now.
-    #debug_file = open("debug_file.txt","a")
 
     if method == "form":
         data, parameters = extract_data_from_forms_in_edge(edge, self)
@@ -1118,18 +1027,11 @@ def send_node_data(edge, self):
                           "data": ",".join(data),
                           "cookies": ",".join(cookies),
                           "method": edge.value.method_data.method}
-        #debug_file.write("HEJ")
-        #debug_file.write(str(json_node_data)+"\n")
         json_list.append(json_node_data)
-        #debug_file.write(str(json_list))
-        print(json_node_data)
 
-    # ADD if method=form and edge.val.. = GET ??
-    if matcher:
+    if self.matcher:
         for json_node_data in json_list:
-          json_node_data = json.dumps(json_node_data)  # Needed to encapsulate keys in quotes (like "url":"http://...")
+          json_node_data = json.dumps(json_node_data)
           self.crawler_pipe_output.write(str(json_node_data))
           self.crawler_pipe_output.write('\n')
           self.crawler_pipe_output.flush()
-
-    print("Should send node data now")

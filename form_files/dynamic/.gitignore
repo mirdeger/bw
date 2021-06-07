@@ -1,5 +1,0 @@
-# Ignore everything in this directory, but still add the directory 
-# in git so that you can clone it and run it immediately.
-*
-# Except this file
-!.gitignore
