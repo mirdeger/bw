@@ -1654,10 +1654,8 @@ class Crawler:
             open("command.txt", "w+").write("")
 
         # send_node_data Added by MATCHER-crew!
-
-        #self.debug.write("matcher = "+str(self.matcher))
-        #if self.matcher:
-        send_node_data(edge, self)
+        if self.matcher:
+            send_node_data(edge, self)
 
         return True
 
