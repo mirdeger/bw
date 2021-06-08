@@ -1017,7 +1017,10 @@ def send_node_data(edge, self):
       parameters = extract_parameters(node)
       json_node_data = {"url": node.value.url,
                         "parameters": ",".join(parameters),
-                        "cookies": ",".join(cookies)}
+                        "data": "",
+                        "cookies": ",".join(cookies),
+                        "method": ""}
+
       json_list.append(json_node_data)
 
     if method == "form":
