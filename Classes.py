@@ -34,7 +34,8 @@ from extractors.Ui_forms import extract_ui_forms
 
 import logging
 
-log_file = os.path.join(os.getcwd(), 'logs', 'crawl-' + str(time.time()) + '.log')
+path_to_logs = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(path_to_logs, 'logs', 'crawl-' + str(time.time()) + '.log')
 logging.basicConfig(filename=log_file,
                     format='%(asctime)s\t%(name)s\t%(levelname)s\t[%(filename)s:%(lineno)d]\t%(message)s',
                     datefmt='%Y-%m-%d:%H:%M:%S', level=logging.DEBUG)

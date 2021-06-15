@@ -16,7 +16,7 @@ parser.add_argument("--matcher", action='store_true', help="Used when the crawle
 args = parser.parse_args()
 
 # Clean form_files/dynamic
-root_dirname = os.path.dirname(__file__)
+root_dirname = os.path.dirname(os.path.abspath(__file__))
 dynamic_path = os.path.join(root_dirname, 'form_files', 'dynamic')
 for f in os.listdir(dynamic_path):
     os.remove(os.path.join(dynamic_path, f))
@@ -36,18 +36,18 @@ driver = webdriver.Chrome(options = chrome_options) # driver = webdriver.Chrome(
 #driver.set_window_position(-1700,0)
 
 # Read scripts and add script which will be executed when the page starts loading
-driver.add_script( open("js/lib.js", "r").read() )
-driver.add_script( open("js/property_obs.js", "r").read() )
-driver.add_script( open("js/md5.js", "r").read() )
-driver.add_script( open("js/addeventlistener_wrapper.js", "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/lib.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/property_obs.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/md5.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/addeventlistener_wrapper.js")), "r").read() )
 #driver.add_script( open("js/ajax_interceptor.js", "r").read() )
 #driver.add_script( open("js/ajax_observer.js", "r").read() )
-driver.add_script( open("js/timing_wrapper.js", "r").read() )
-driver.add_script( open("js/window_wrapper.js", "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/timing_wrapper.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/window_wrapper.js")), "r").read() )
 # Benjamin
-driver.add_script( open("js/forms.js", "r").read() )
-driver.add_script( open("js/xss_xhr.js", "r").read() )
-driver.add_script( open("js/remove_alerts.js", "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/forms.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/xss_xhr.js")), "r").read() )
+driver.add_script( open( str( os.path.join(root_dirname,"js/remove_alerts.js")), "r").read() )
 
 if args.wivet:
     challenge = int(args.wivet)
