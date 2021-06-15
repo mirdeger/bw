@@ -548,7 +548,6 @@ class Crawler:
         self.debug_mode = debug_mode
         # line below added my MATCHER-crew
         self.matcher = matcher
-        self.debug = open("debugfileclean.txt",'a')
 
 
         # Get file descriptors for ModuleMatcher. Added by MATCHER-crew
