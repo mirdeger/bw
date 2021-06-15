@@ -34,8 +34,8 @@ from extractors.Ui_forms import extract_ui_forms
 
 import logging
 
-path_to_logs = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.join(path_to_logs, 'logs', 'crawl-' + str(time.time()) + '.log')
+root_dirpath = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(root_dirpath, 'logs', 'crawl-' + str(time.time()) + '.log')
 logging.basicConfig(filename=log_file,
                     format='%(asctime)s\t%(name)s\t%(levelname)s\t[%(filename)s:%(lineno)d]\t%(message)s',
                     datefmt='%Y-%m-%d:%H:%M:%S', level=logging.DEBUG)
@@ -573,9 +573,9 @@ class Crawler:
 
         self.graph.data['urls'] = {}
         self.graph.data['form_urls'] = {}
-        open("run.flag", "w+").write("1")
-        open("queue.txt", "w+").write("")
-        open("command.txt", "w+").write("")
+        open( str( os.path.join(root_dirpath,"run.flag")), "w+").write("1")
+        open( str( os.path.join(root_dirpath,"queue.txt")), "w+").write("")
+        open( str( os.path.join(root_dirpath,"command.txt")), "w+").write("")
 
         random.seed(6)  # chosen by fair dice roll
 
@@ -588,13 +588,13 @@ class Crawler:
                 # f = open("graph.txt", "w")
                 # f.write( self.graph.toMathematica() )
 
-                if "0" in open("run.flag", "r").read():
+                if "0" in open( str( os.path.join(root_dirpath,"run.flag")), "r").read():
                     logging.info("Run set to 0, stop crawling")
                     break
-                if "2" in open("run.flag", "r").read():
+                if "2" in open( str( os.path.join(root_dirpath,"run.flag")), "r").read():
                     logging.info("Run set to 2, pause crawling")
                     input("Crawler paused, press enter to continue")
-                    open("run.flag", "w+").write("3")
+                    open( str( os.path.join(root_dirpath,"run.flag")), "w+").write("3")
 
                 n_gets = 0
                 n_forms = 0
@@ -1260,7 +1260,7 @@ class Crawler:
 
     # Handle priority
     def next_unvisited_edge(self, driver, graph):
-        user_url = open("queue.txt", "r").read()
+        user_url = open( str( os.path.join(root_dirpath,"queue.txt")), "r").read()
         if user_url:
             print("User supplied url: ", user_url)
             logging.info("Adding user from URLs " + user_url)
@@ -1274,8 +1274,8 @@ class Crawler:
 
             print(new_edge)
 
-            open("queue.txt", "w+").write("")
-            open("run.flag", "w+").write("3")
+            open( str( os.path.join(root_dirpath,"queue.txt")), "w+").write("")
+            open( str( os.path.join(root_dirpath,"run.flag")), "w+").write("3")
 
             successful = follow_edge(driver, graph, new_edge)
             if successful:
@@ -1467,7 +1467,7 @@ class Crawler:
                 if self.io_graph[tracker]['reflected']:
                     print("EDGE FROM ", self.io_graph[tracker]['injected'], "to", self.io_graph[tracker]['reflected'])
 
-            f = open("graph_mathematica.txt", "w")
+            f = open( str( os.path.join(root_dirpath,"graph_mathematica.txt")), "w")
             f.write(self.graph.toMathematica())
 
             # input("Press enter to kill")
@@ -1638,20 +1638,20 @@ class Crawler:
         self.inspect_tracker(edge)
         # input("press enter to step")
 
-        if "3" in open("run.flag", "r").read():
+        if "3" in open( str( os.path.join(root_dirpath,"run.flag")), "r").read():
             logging.info("Run set to 3, pause each step")
             input("Crawler in stepping mode, press enter to continue. EDIT run.flag to run")
 
         # Check command
         found_command = False
-        if "get_graph" in open("command.txt", "r").read():
+        if "get_graph" in open( str( os.path.join(root_dirpath,"command.txt")), "r").read():
             f = open("graph.txt", "w+")
             f.write(str(self.graph))
             f.close()
             found_command = True
         # Clear commad
         if found_command:
-            open("command.txt", "w+").write("")
+            open( str( os.path.join(root_dirpath,"command.txt")), "w+").write("")
 
         # send_node_data Added by MATCHER-crew!
         if self.matcher:
